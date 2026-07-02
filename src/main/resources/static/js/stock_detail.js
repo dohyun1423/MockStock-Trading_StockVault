@@ -280,7 +280,7 @@ function formatRealtimeTradeTime(tradeTime) {
     return `${value.substring(0, 2)}:${value.substring(2, 4)}:${value.substring(4, 6)}`;
 }
 
-// 상세페이지 내 주식 탭에 현재 종목의 보유 정보와 거래내역 표시
+// 상세페이지 내 주식 탭에 현재 종목의 보유 정보, 미체결 주문, 거래내역 표시
 async function renderDetailMyStock(symbol) {
     const wrap = document.getElementById('detail-my-stock-wrap');
 
@@ -288,8 +288,9 @@ async function renderDetailMyStock(symbol) {
         return false;
     }
 
-    const [portfolio, trades] = await Promise.all([
+    const [portfolio, openOrders, trades] = await Promise.all([
         fetchMyPortfolio(),
+        fetchMyOpenOrders(symbol),
         fetchMyTrades(symbol)
     ]);
 
@@ -304,8 +305,11 @@ async function renderDetailMyStock(symbol) {
 
     wrap.innerHTML = `
         ${renderDetailHoldingSection(holding)}
+        ${renderDetailOpenOrderSection(openOrders || [])}
         ${renderDetailTradeSection(trades || [])}
     `;
+
+    bindDetailOpenOrderCancelButtons();
 
     return true;
 }
@@ -331,6 +335,22 @@ async function fetchMyTrades(symbol) {
     }
 
     return await response.json();
+}
+
+// 현재 종목의 미체결/부분체결 주문을 조회한다.
+async function fetchMyOpenOrders(symbol) {
+    const response = await authFetch('/api/orders/open');
+
+    if (!response || !response.ok) {
+        return [];
+    }
+
+    const orders = await response.json();
+    const targetSymbol = normalizeStockSymbol(symbol);
+
+    return (orders || []).filter((order) => {
+        return normalizeStockSymbol(order.symbol) === targetSymbol;
+    });
 }
 
 // 현재 종목의 보유 정보를 카드 형태로 렌더링
@@ -391,6 +411,77 @@ function renderDetailHoldingSection(holding) {
     `;
 }
 
+// 현재 종목의 미체결/부분체결 주문을 표로 렌더링한다.
+function renderDetailOpenOrderSection(openOrders) {
+    if (!openOrders || openOrders.length === 0) {
+        return `
+            <section class="detail-my-section">
+                <h3>주문대기</h3>
+
+                <div class="detail-my-empty small">
+                    <p>주문대기 중인 주문이 없습니다.</p>
+                    <span>원하는 가격으로 주문하면 이 영역에 미체결 주문이 표시됩니다.</span>
+                </div>
+            </section>
+        `;
+    }
+
+    return `
+        <section class="detail-my-section">
+            <h3>주문대기</h3>
+
+            <table class="detail-open-order-table">
+                <thead>
+                <tr>
+                    <th>구분</th>
+                    <th>주문가</th>
+                    <th>주문수량</th>
+                    <th>미체결</th>
+                    <th>상태</th>
+                    <th>접수시간</th>
+                    <th>취소</th>
+                </tr>
+                </thead>
+                <tbody>
+                ${openOrders.map((order) => `
+                    <tr
+                        class="detail-open-order-row"
+                        data-order-id="${escapeHtml(order.id)}"
+                        data-stock-name="${escapeHtml(currentStock?.name || order.symbol)}"
+                        data-symbol="${escapeHtml(order.symbol)}"
+                        data-order-type="${escapeHtml(order.orderType)}"
+                        data-order-price="${escapeHtml(order.orderPrice)}"
+                        data-quantity="${escapeHtml(order.quantity)}"
+                        data-executed-quantity="${escapeHtml(order.executedQuantity)}"
+                        data-remaining-quantity="${escapeHtml(order.remainingQuantity)}"
+                    >
+                        <td>
+                            <span class="detail-trade-type ${order.orderType === 'BUY' ? 'buy' : 'sell'}">
+                                ${order.orderType === 'BUY' ? '매수' : '매도'}
+                            </span>
+                        </td>
+                        <td>${formatNumber(order.orderPrice)}원</td>
+                        <td>${formatNumber(order.quantity)}주</td>
+                        <td>${formatNumber(order.remainingQuantity)}주</td>
+                        <td>${formatOrderStatus(order.status)}</td>
+                        <td>${formatTradeDate(order.orderedAt)}</td>
+                        <td>
+                            <button
+                                type="button"
+                                class="detail-open-order-cancel-btn"
+                                data-order-id="${escapeHtml(order.id)}"
+                            >
+                                취소
+                            </button>
+                        </td>
+                    </tr>
+                `).join('')}
+                </tbody>
+            </table>
+        </section>
+    `;
+}
+
 // 현재 종목의 거래내역을 표로 렌더링
 function renderDetailTradeSection(trades) {
     if (!trades || trades.length === 0) {
@@ -438,6 +529,66 @@ function renderDetailTradeSection(trades) {
             </table>
         </section>
     `;
+}
+
+// 상세페이지 주문대기 취소 버튼을 취소 API와 연결한다.
+function bindDetailOpenOrderCancelButtons() {
+    const buttons = document.querySelectorAll('.detail-open-order-cancel-btn');
+
+    buttons.forEach((button) => {
+        button.addEventListener('click', async (event) => {
+            event.stopPropagation();
+
+            const orderId = button.dataset.orderId;
+
+            if (!orderId) {
+                return;
+            }
+
+            button.disabled = true;
+            await cancelDetailOpenOrder(orderId);
+        });
+    });
+
+    bindDetailOpenOrderRows();
+}
+
+// 상세페이지 주문대기 행 클릭 시 주문 수정 모달을 연다.
+function bindDetailOpenOrderRows() {
+    const rows = document.querySelectorAll('.detail-open-order-row');
+
+    rows.forEach((row) => {
+        row.addEventListener('click', () => {
+            if (typeof openOrderEditModal !== 'function') {
+                return;
+            }
+
+            openOrderEditModal({
+                id: row.dataset.orderId,
+                stockName: row.dataset.stockName,
+                symbol: row.dataset.symbol,
+                orderType: row.dataset.orderType,
+                orderPrice: Number(row.dataset.orderPrice || 0),
+                quantity: Number(row.dataset.quantity || 0),
+                executedQuantity: Number(row.dataset.executedQuantity || 0),
+                remainingQuantity: Number(row.dataset.remainingQuantity || 0)
+            });
+        });
+    });
+}
+
+// 상세페이지에서 선택한 미체결 주문을 취소하고 내 주식 탭을 다시 조회한다.
+async function cancelDetailOpenOrder(orderId) {
+    const response = await authFetch(`/api/orders/${encodeURIComponent(orderId)}/cancel`, {
+        method: 'PATCH'
+    });
+
+    if (!response || !response.ok) {
+        await loadDetailMyStockTab(true);
+        return;
+    }
+
+    await loadDetailMyStockTab(true);
 }
 
 // 내 주식 조회 실패 시 표시
@@ -1313,6 +1464,18 @@ function formatTradeDate(value) {
     }
 
     return String(value).replace('T', ' ').slice(0, 16);
+}
+
+function formatOrderStatus(status) {
+    if (status === 'PARTIALLY_FILLED') {
+        return '부분체결';
+    }
+
+    if (status === 'PENDING') {
+        return '미체결';
+    }
+
+    return status || '-';
 }
 
 // 상세페이지에서 주문 성공 시 현재 종목의 가격, 종목정보, 보유 정보, 거래내역을 다시 조회

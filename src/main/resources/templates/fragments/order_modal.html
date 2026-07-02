@@ -39,17 +39,40 @@
                     <strong id="order-current-price">-</strong>
                 </div>
                 <div class="order-info-card">
-                    <span class="order-label">보유 현금</span>
+                    <span class="order-label">주문 가능 현금</span>
                     <strong id="order-cash-balance">-</strong>
                 </div>
                 <div class="order-info-card">
-                    <span class="order-label">보유 수량</span>
+                    <span class="order-label">주문 가능 수량</span>
                     <strong id="order-holding-quantity">-</strong>
                 </div>
                 <div class="order-info-card">
                     <span class="order-label">예상 금액</span>
                     <strong id="order-total-amount">-</strong>
                 </div>
+            </div>
+
+            <div class="order-price-field">
+                <div class="order-price-label-row">
+                    <span class="order-label">주문가격</span>
+                    <button type="button" class="order-current-price-btn" onclick="setOrderPriceToCurrent()">
+                        현재가
+                    </button>
+                </div>
+
+                <div class="order-price-control">
+                    <button type="button" class="order-price-step-btn" onclick="decreaseOrderPrice()" aria-label="주문가격 내리기">
+                        -
+                    </button>
+
+                    <input type="number" id="order-price-input" min="1" step="100">
+
+                    <button type="button" class="order-price-step-btn" onclick="increaseOrderPrice()" aria-label="주문가격 올리기">
+                        +
+                    </button>
+                </div>
+
+                <p class="order-price-step-label" id="order-price-step-label">-</p>
             </div>
 
             <label class="order-quantity-field">
@@ -62,6 +85,83 @@
             <button type="button" class="order-submit-btn" id="order-submit-btn" onclick="submitOrder()">
                 주문하기
             </button>
+        </section>
+    </div>
+
+    <div class="order-modal-overlay" id="order-edit-modal-overlay">
+        <section class="order-modal" role="dialog" aria-modal="true" aria-labelledby="order-edit-modal-title">
+            <header class="order-modal-header">
+                <div>
+                    <p class="order-kicker">// EDIT ORDER</p>
+                    <h2 id="order-edit-modal-title">주문 수정</h2>
+                </div>
+
+                <button type="button" class="order-close-btn" onclick="closeOrderEditModal()" aria-label="주문 수정창 닫기">
+                    ×
+                </button>
+            </header>
+
+            <div class="order-stock-summary">
+                <div>
+                    <span class="order-label">종목명</span>
+                    <strong id="edit-order-stock-name">-</strong>
+                </div>
+            </div>
+
+            <div class="order-info-grid">
+                <div class="order-info-card">
+                    <span class="order-label">구분</span>
+                    <strong id="edit-order-type">-</strong>
+                </div>
+                <div class="order-info-card">
+                    <span class="order-label">체결 수량</span>
+                    <strong id="edit-order-executed-quantity">-</strong>
+                </div>
+                <div class="order-info-card">
+                    <span class="order-label">기존 주문가</span>
+                    <strong id="edit-order-original-price">-</strong>
+                </div>
+                <div class="order-info-card">
+                    <span class="order-label">기존 미체결</span>
+                    <strong id="edit-order-original-quantity">-</strong>
+                </div>
+            </div>
+
+            <div class="order-price-field">
+                <div class="order-price-label-row">
+                    <span class="order-label">수정 주문가격</span>
+                </div>
+
+                <div class="order-price-control">
+                    <button type="button" class="order-price-step-btn" onclick="decreaseEditOrderPrice()" aria-label="수정 주문가격 내리기">
+                        -
+                    </button>
+
+                    <input type="number" id="edit-order-price-input" min="1">
+
+                    <button type="button" class="order-price-step-btn" onclick="increaseEditOrderPrice()" aria-label="수정 주문가격 올리기">
+                        +
+                    </button>
+                </div>
+
+                <p class="order-price-step-label" id="edit-order-price-step-label">-</p>
+            </div>
+
+            <label class="order-quantity-field">
+                <span class="order-label">수정 미체결 수량</span>
+                <input type="number" id="edit-order-quantity-input" min="1" value="1">
+            </label>
+
+            <p class="order-message" id="edit-order-message"></p>
+
+            <div class="order-edit-actions">
+                <button type="button" class="order-edit-cancel-btn" onclick="cancelEditingOrder()">
+                    주문 취소
+                </button>
+                <button type="button" class="order-submit-btn order-edit-submit-btn" id="order-edit-submit-btn" onclick="submitOrderEdit()">
+                    수정 저장
+                </button>
+            </div>
         </section>
     </div>
 </div>

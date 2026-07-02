@@ -1,6 +1,7 @@
 // KIS WebSocket에서 수신한 실시간 메시지를 구분하고 파싱한 뒤 브라우저 구독자에게 전달하는 핸들러
 package com.stock.mockstock.domain.stock.realtime;
 
+import com.stock.mockstock.domain.order.service.OrderMatchingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.socket.PongMessage;
@@ -20,6 +21,7 @@ public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
     private final KisRealtimeTradeMessageParser tradeMessageParser;
     private final KisRealtimeOrderbookMessageParser orderbookMessageParser;
     private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
+    private final OrderMatchingService orderMatchingService;
 
     // KIS에서 오는 JSON 응답, 실시간 체결 데이터, 실시간 호가 데이터, PINGPONG 메시지를 구분해서 처리한다.
     @Override
@@ -29,6 +31,7 @@ public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
         if (payload.startsWith("0|" + REALTIME_TRADE_TR_ID + "|")) {
             KisRealtimeTradeMessage tradeMessage = tradeMessageParser.parse(payload);
             stockRealtimeBroadcaster.broadcastTrade(tradeMessage);
+            orderMatchingService.matchByRealtimeTrade(tradeMessage);
 
             log.info(
                     "KIS realtime trade parsed. symbol={}, price={}, changeRate={}, volume={}",

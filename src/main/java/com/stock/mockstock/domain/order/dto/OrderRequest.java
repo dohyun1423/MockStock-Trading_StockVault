@@ -15,6 +15,6 @@ public class OrderRequest {
     @Positive(message = "수량은 1주 이상이어야 합니다.")
     private Integer quantity;
 
-    // 예약 주문 또는 시간외 주문에서 사용할 기준 가격
-    private Long limitPrice;
+    // 사용자가 지정한 주문 가격이다. 비어 있으면 서버에서 현재가를 기본 주문가로 사용한다.
+    private Long orderPrice;
 }

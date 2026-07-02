@@ -568,7 +568,8 @@ body {
     color: #3b82f6;
 }
 
-.detail-trade-table {
+.detail-trade-table,
+.detail-open-order-table {
     width: 100%;
     border-collapse: collapse;
     border: 1px solid var(--border);
@@ -576,7 +577,9 @@ body {
 }
 
 .detail-trade-table th,
-.detail-trade-table td {
+.detail-trade-table td,
+.detail-open-order-table th,
+.detail-open-order-table td {
     padding: 14px;
     border-bottom: 1px solid var(--border);
     color: var(--text);
@@ -584,14 +587,16 @@ body {
     text-align: left;
 }
 
-.detail-trade-table th {
+.detail-trade-table th,
+.detail-open-order-table th {
     color: var(--muted);
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 400;
 }
 
-.detail-trade-table td {
+.detail-trade-table td,
+.detail-open-order-table td {
     font-family: var(--font-mono);
 }
 
@@ -625,6 +630,39 @@ body {
     align-items: center;
     justify-content: center;
     gap: 8px;
+}
+
+.detail-my-empty.small {
+    min-height: 130px;
+}
+
+.detail-open-order-cancel-btn {
+    width: 56px;
+    height: 30px;
+    border: 1px solid rgba(255, 69, 96, 0.5);
+    background: rgba(255, 69, 96, 0.1);
+    color: var(--red);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.detail-open-order-cancel-btn:hover {
+    background: rgba(255, 69, 96, 0.2);
+}
+
+.detail-open-order-cancel-btn:disabled {
+    cursor: wait;
+    opacity: 0.55;
+}
+
+.detail-open-order-row {
+    cursor: pointer;
+}
+
+.detail-open-order-row:hover {
+    background: rgba(0, 229, 160, 0.04);
 }
 
 .detail-my-empty p {

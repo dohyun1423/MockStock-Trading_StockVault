@@ -16,14 +16,14 @@ public class OrderResponse {
     private Long totalAmount;
     private Long cashBalance;
 
-    // EXECUTED 또는 RESERVED
+    // EXECUTED 또는 PENDING처럼 주문 처리 결과를 나타낸다.
     private String orderStatus;
 
-    // 현재 거래 세션
+    // 주문이 접수된 현재 거래 세션이다.
     private MarketSession marketSession;
 
-    // 예약주문이면 pendingOrderId가 내려간다.
-    private Long pendingOrderId;
+    // 주문 생성 후 추적할 수 있는 StockOrder 식별자다.
+    private Long stockOrderId;
 
     private String message;
 }

@@ -13,6 +13,8 @@ public class HoldingResponse {
     private String stockName;
     private String symbol;
     private Integer quantity;
+    private Integer reservedQuantity;
+    private Integer availableQuantity;
     private Long averagePrice;
     private Long currentPrice;
     private Long evaluationAmount;

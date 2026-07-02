@@ -1,5 +1,6 @@
 package com.stock.mockstock.domain.order.service;
 
+import com.stock.mockstock.domain.order.entity.StockOrder;
 import com.stock.mockstock.domain.order.entity.Trade;
 import com.stock.mockstock.domain.order.enumtype.OrderType;
 import com.stock.mockstock.domain.order.repository.TradeRepository;
@@ -17,24 +18,20 @@ public class OrderExecutionService {
     private final HoldingRepository holdingRepository;
     private final TradeRepository tradeRepository;
 
-    public Long execute(
-            User user,
-            Stock stock,
-            OrderType orderType,
-            Integer quantity,
-            Long price
+    // StockOrder의 남은 수량 중 지정된 수량을 실제 체결 처리한다.
+    public Long executeStockOrder(
+            StockOrder stockOrder,
+            Long executionPrice,
+            Integer executionQuantity
     ) {
-        Long totalAmount = calculateTotalAmount(price, quantity);
-
-        if (orderType == OrderType.BUY) {
-            executeBuy(user, stock, quantity, price, totalAmount);
-            return totalAmount;
+        if (stockOrder.getOrderType() == OrderType.BUY) {
+            return executeBuy(stockOrder, executionPrice, executionQuantity);
         }
 
-        executeSell(user, stock, quantity, price, totalAmount);
-        return totalAmount;
+        return executeSell(stockOrder, executionPrice, executionQuantity);
     }
 
+    // 가격과 수량으로 총 주문/체결 금액을 계산한다.
     public Long calculateTotalAmount(Long price, Integer quantity) {
         try {
             return Math.multiplyExact(price, quantity.longValue());
@@ -43,57 +40,64 @@ public class OrderExecutionService {
         }
     }
 
-    private void executeBuy(
-            User user,
-            Stock stock,
-            Integer quantity,
-            Long price,
-            Long totalAmount
+    // 예약 현금으로 묶인 매수 주문을 체결하고 보유 종목을 늘린다.
+    private Long executeBuy(
+            StockOrder stockOrder,
+            Long executionPrice,
+            Integer executionQuantity
     ) {
-        if (user.getCash() < totalAmount) {
-            throw new IllegalArgumentException("보유 현금이 부족합니다.");
-        }
+        User user = stockOrder.getUser();
+        Stock stock = stockOrder.getStock();
+        Long executedAmount = calculateTotalAmount(executionPrice, executionQuantity);
+        Long reservedAmount = calculateTotalAmount(stockOrder.getOrderPrice(), executionQuantity);
 
-        user.decreaseCash(totalAmount);
+        user.executeReservedBuy(reservedAmount, executedAmount);
 
         Holding holding = holdingRepository.findByUserAndStock(user, stock)
                 .orElseGet(() -> Holding.builder()
                         .user(user)
                         .stock(stock)
                         .quantity(0)
+                        .reservedQuantity(0)
                         .averagePrice(0L)
                         .build());
 
-        holding.buy(quantity, price);
+        holding.buy(executionQuantity, executionPrice);
         holdingRepository.save(holding);
 
-        saveTrade(user, stock, OrderType.BUY, quantity, price, totalAmount);
+        stockOrder.fill(executionQuantity);
+        saveTrade(user, stock, stockOrder.getOrderType(), executionQuantity, executionPrice, executedAmount);
+
+        return executedAmount;
     }
 
-    private void executeSell(
-            User user,
-            Stock stock,
-            Integer quantity,
-            Long price,
-            Long totalAmount
+    // 예약 수량으로 묶인 매도 주문을 체결하고 현금을 늘린다.
+    private Long executeSell(
+            StockOrder stockOrder,
+            Long executionPrice,
+            Integer executionQuantity
     ) {
+        User user = stockOrder.getUser();
+        Stock stock = stockOrder.getStock();
+        Long executedAmount = calculateTotalAmount(executionPrice, executionQuantity);
+
         Holding holding = holdingRepository.findByUserAndStock(user, stock)
                 .orElseThrow(() -> new IllegalArgumentException("보유 중인 종목이 아닙니다."));
 
-        if (holding.getQuantity() < quantity) {
-            throw new IllegalArgumentException("보유 수량이 부족합니다.");
-        }
-
-        holding.sell(quantity);
+        holding.executeReservedSell(executionQuantity);
 
         if (holding.isEmpty()) {
             holdingRepository.delete(holding);
         }
 
-        user.increaseCash(totalAmount);
-        saveTrade(user, stock, OrderType.SELL, quantity, price, totalAmount);
+        user.increaseCash(executedAmount);
+        stockOrder.fill(executionQuantity);
+        saveTrade(user, stock, stockOrder.getOrderType(), executionQuantity, executionPrice, executedAmount);
+
+        return executedAmount;
     }
 
+    // 실제 체결 결과를 거래내역으로 저장한다.
     private void saveTrade(
             User user,
             Stock stock,

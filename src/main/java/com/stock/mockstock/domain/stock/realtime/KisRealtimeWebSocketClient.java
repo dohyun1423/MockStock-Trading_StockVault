@@ -2,6 +2,7 @@
 package com.stock.mockstock.domain.stock.realtime;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.stock.mockstock.domain.order.service.OrderMatchingService;
 import com.stock.mockstock.domain.stock.kis.KisApprovalKeyService;
 import com.stock.mockstock.global.config.KisProperties;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class KisRealtimeWebSocketClient {
     private final KisRealtimeTradeMessageParser tradeMessageParser;
     private final KisRealtimeOrderbookMessageParser orderbookMessageParser;
     private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
+    private final OrderMatchingService orderMatchingService;
 
     private WebSocketSession session;
     private final Set<String> subscribedKeys = ConcurrentHashMap.newKeySet();
@@ -83,7 +85,8 @@ public class KisRealtimeWebSocketClient {
         KisRealtimeWebSocketHandler handler = new KisRealtimeWebSocketHandler(
                 tradeMessageParser,
                 orderbookMessageParser,
-                stockRealtimeBroadcaster
+                stockRealtimeBroadcaster,
+                orderMatchingService
         );
 
         session = client.execute(
