@@ -29,7 +29,7 @@ public class OpenOrderRealtimeSubscriptionService {
     private final StockOrderRepository stockOrderRepository;
     private final KisRealtimeWebSocketClient kisRealtimeWebSocketClient;
 
-    // 주문 트랜잭션이 커밋된 뒤에 해당 종목의 실시간 체결가를 구독한다.
+    // 주문 트랜잭션이 커밋된 뒤에 해당 종목의 실시간 체결가와 호가를 구독한다.
     public void subscribeTradeAfterCommit(String symbol) {
         String normalizedSymbol = normalizeSymbol(symbol);
 
@@ -65,9 +65,10 @@ public class OpenOrderRealtimeSubscriptionService {
         log.info("Open order realtime subscriptions restored. count={}, symbols={}", symbols.size(), symbols);
     }
 
-    // KIS 실시간 체결가 구독을 요청한다.
+    // KIS 실시간 체결가와 호가 구독을 요청한다.
     private void subscribeTrade(String symbol) {
         kisRealtimeWebSocketClient.subscribeTrade(symbol);
+        kisRealtimeWebSocketClient.subscribeOrderbook(symbol);
     }
 
     // KIS와 DB 조회 기준을 맞추기 위해 종목코드를 정규화한다.

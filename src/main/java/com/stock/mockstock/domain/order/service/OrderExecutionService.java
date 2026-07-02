@@ -1,5 +1,6 @@
 package com.stock.mockstock.domain.order.service;
 
+import com.stock.mockstock.domain.order.dto.OrderExecutionNotification;
 import com.stock.mockstock.domain.order.entity.StockOrder;
 import com.stock.mockstock.domain.order.entity.Trade;
 import com.stock.mockstock.domain.order.enumtype.OrderType;
@@ -7,6 +8,7 @@ import com.stock.mockstock.domain.order.repository.TradeRepository;
 import com.stock.mockstock.domain.portfolio.entity.Holding;
 import com.stock.mockstock.domain.portfolio.repository.HoldingRepository;
 import com.stock.mockstock.domain.stock.entity.Stock;
+import com.stock.mockstock.domain.stock.realtime.StockRealtimeBroadcaster;
 import com.stock.mockstock.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,7 @@ public class OrderExecutionService {
 
     private final HoldingRepository holdingRepository;
     private final TradeRepository tradeRepository;
+    private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
 
     // StockOrder의 남은 수량 중 지정된 수량을 실제 체결 처리한다.
     public Long executeStockOrder(
@@ -67,6 +70,7 @@ public class OrderExecutionService {
 
         stockOrder.fill(executionQuantity);
         saveTrade(user, stock, stockOrder.getOrderType(), executionQuantity, executionPrice, executedAmount);
+        notifyOrderExecuted(stockOrder, executionQuantity, executionPrice, executedAmount);
 
         return executedAmount;
     }
@@ -93,6 +97,7 @@ public class OrderExecutionService {
         user.increaseCash(executedAmount);
         stockOrder.fill(executionQuantity);
         saveTrade(user, stock, stockOrder.getOrderType(), executionQuantity, executionPrice, executedAmount);
+        notifyOrderExecuted(stockOrder, executionQuantity, executionPrice, executedAmount);
 
         return executedAmount;
     }
@@ -116,5 +121,30 @@ public class OrderExecutionService {
                 .build();
 
         tradeRepository.save(trade);
+    }
+
+    // 체결된 주문을 로그인 중인 사용자 브라우저에 알림으로 전달한다.
+    private void notifyOrderExecuted(
+            StockOrder stockOrder,
+            Integer quantity,
+            Long price,
+            Long totalAmount
+    ) {
+        User user = stockOrder.getUser();
+        Stock stock = stockOrder.getStock();
+        String orderTypeText = stockOrder.getOrderType() == OrderType.BUY ? "매수" : "매도";
+
+        OrderExecutionNotification notification = new OrderExecutionNotification(
+                stockOrder.getId(),
+                stock.getName(),
+                stock.getSymbol(),
+                stockOrder.getOrderType(),
+                quantity,
+                price,
+                totalAmount,
+                stock.getName() + " " + orderTypeText + " 주문이 체결되었습니다."
+        );
+
+        stockRealtimeBroadcaster.broadcastOrderExecution(user.getEmail(), notification);
     }
 }

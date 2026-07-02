@@ -220,10 +220,6 @@ async function submitOrder() {
 
     setOrderMessage(result.message || '주문이 완료되었습니다.', 'success');
 
-    if (result.orderStatus === 'EXECUTED') {
-        showOrderExecutionAlert(result);
-    }
-
     await loadOrderData();
     updateOrderTotalAmount();
 
@@ -234,22 +230,6 @@ async function submitOrder() {
     setTimeout(() => {
         closeOrderModal();
     }, 400);
-}
-
-// 로그인 상태에서 주문이 즉시 체결되면 사용자에게 브라우저 알림을 표시한다.
-function showOrderExecutionAlert(result) {
-    const token = localStorage.getItem('accessToken');
-
-    if (!token) {
-        return;
-    }
-
-    const orderTypeText = result.orderType === 'BUY' ? '매수' : '매도';
-    const stockName = result.stockName || orderState.stockName || orderState.symbol;
-    const quantity = formatOrderNumber(result.quantity);
-    const price = formatOrderNumber(result.price || orderState.currentPrice);
-
-    alert(`${stockName} ${orderTypeText} 주문이 체결되었습니다.\n수량: ${quantity}주\n가격: ${price}원`);
 }
 
 // 매수 또는 매도 주문 API를 호출한다.

@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class StockRealtimeSessionRegistry {
 
     private final ConcurrentHashMap<String, Set<WebSocketSession>> sessionsBySymbol = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Set<WebSocketSession>> sessionsByEmail = new ConcurrentHashMap<>();
 
     // 특정 종목을 구독하는 브라우저 session을 등록한다.
     public void subscribe(String symbol, WebSocketSession session) {
@@ -22,9 +23,17 @@ public class StockRealtimeSessionRegistry {
                 .add(session);
     }
 
+    // 로그인 사용자의 주문 알림을 받을 브라우저 session을 등록한다.
+    public void subscribeUser(String email, WebSocketSession session) {
+        sessionsByEmail
+                .computeIfAbsent(email, key -> ConcurrentHashMap.newKeySet())
+                .add(session);
+    }
+
     // 연결이 끊긴 브라우저 session을 전체 구독 목록에서 제거한다.
     public void remove(WebSocketSession session) {
         sessionsBySymbol.values().forEach(sessions -> sessions.remove(session));
+        sessionsByEmail.values().forEach(sessions -> sessions.remove(session));
     }
 
     // 특정 종목을 구독 중인 브라우저들에게 메시지를 전송한다.
@@ -42,6 +51,25 @@ public class StockRealtimeSessionRegistry {
                 session.sendMessage(new TextMessage(message));
             } catch (Exception e) {
                 log.warn("Realtime message send failed. symbol={}, sessionId={}", symbol, session.getId(), e);
+            }
+        });
+    }
+
+    // 특정 사용자에게만 주문 체결 알림 메시지를 전송한다.
+    public void broadcastToUser(String email, String message) {
+        Set<WebSocketSession> sessions = sessionsByEmail.get(email);
+
+        if (sessions == null || sessions.isEmpty()) {
+            return;
+        }
+
+        sessions.removeIf(session -> !session.isOpen());
+
+        sessions.forEach(session -> {
+            try {
+                session.sendMessage(new TextMessage(message));
+            } catch (Exception e) {
+                log.warn("Order notification send failed. email={}, sessionId={}", email, session.getId(), e);
             }
         });
     }

@@ -31,7 +31,6 @@ public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
         if (payload.startsWith("0|" + REALTIME_TRADE_TR_ID + "|")) {
             KisRealtimeTradeMessage tradeMessage = tradeMessageParser.parse(payload);
             stockRealtimeBroadcaster.broadcastTrade(tradeMessage);
-            orderMatchingService.matchByRealtimeTrade(tradeMessage);
 
             log.info(
                     "KIS realtime trade parsed. symbol={}, price={}, changeRate={}, volume={}",
@@ -46,6 +45,7 @@ public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
         if (payload.startsWith("0|" + REALTIME_ORDERBOOK_TR_ID + "|")) {
             KisRealtimeOrderbookMessage orderbookMessage = orderbookMessageParser.parse(payload);
             stockRealtimeBroadcaster.broadcastOrderbook(orderbookMessage);
+            orderMatchingService.matchByRealtimeOrderbook(orderbookMessage);
 
             log.info(
                     "KIS realtime orderbook parsed. symbol={}, levels={}, totalAsk={}, totalBid={}",

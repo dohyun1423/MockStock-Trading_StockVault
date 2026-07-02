@@ -1,5 +1,7 @@
 let currentUserInfo = null;
 let tokenTimerId = null;
+let orderNotificationSocket = null;
+let orderToastSequence = 0;
 
 window.authReady = initializeAuth();
 
@@ -9,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     bindStockSearch();
     bindMyInfoModal();
     bindTokenRefreshButton();
+    connectOrderNotificationSocket();
 });
 
 async function initializeAuth() {
@@ -206,7 +209,143 @@ function goStockDetail(symbol) {
 
 function handleLogout() {
     localStorage.removeItem('accessToken');
+    closeOrderNotificationSocket();
     window.location.href = '/login';
+}
+
+// 로그인한 사용자의 주문 체결 알림 WebSocket을 연결한다.
+function connectOrderNotificationSocket() {
+    const token = localStorage.getItem('accessToken');
+
+    if (!token) {
+        return;
+    }
+
+    if (orderNotificationSocket && orderNotificationSocket.readyState === WebSocket.OPEN) {
+        return;
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    orderNotificationSocket = new WebSocket(`${protocol}://${window.location.host}/ws/stocks`);
+
+    orderNotificationSocket.onopen = () => {
+        orderNotificationSocket.send(JSON.stringify({
+            type: 'ORDER_NOTIFICATION_SUBSCRIBE',
+            token
+        }));
+    };
+
+    orderNotificationSocket.onmessage = async (event) => {
+        const message = JSON.parse(event.data);
+
+        if (message.type === 'ORDER_EXECUTED') {
+            await handleOrderExecutionNotification(message.data);
+        }
+    };
+
+    orderNotificationSocket.onclose = () => {
+        orderNotificationSocket = null;
+    };
+
+    orderNotificationSocket.onerror = () => {
+        closeOrderNotificationSocket();
+    };
+}
+
+// 주문 체결 알림을 사용자에게 보여주고 현재 화면 데이터를 갱신한다.
+async function handleOrderExecutionNotification(notification) {
+    if (!notification) {
+        return;
+    }
+
+    showOrderExecutionToast(notification);
+
+    if (typeof window.handleOrderSuccess === 'function') {
+        await window.handleOrderSuccess();
+    }
+}
+
+// 체결 알림을 화면 우측 상단 toast로 표시한다.
+function showOrderExecutionToast(notification) {
+    const container = getOrderToastContainer();
+
+    if (!container) {
+        return;
+    }
+
+    const toastId = `order-toast-${++orderToastSequence}`;
+    const toast = document.createElement('button');
+    const orderTypeText = notification.orderType === 'BUY' ? '매수' : '매도';
+    const quantity = Number(notification.quantity || 0).toLocaleString('ko-KR');
+    const price = Number(notification.price || 0).toLocaleString('ko-KR');
+    const totalAmount = Number(notification.totalAmount || 0).toLocaleString('ko-KR');
+    const stockName = notification.stockName || notification.symbol || '주문';
+    const symbol = notification.symbol || '';
+
+    toast.type = 'button';
+    toast.id = toastId;
+    toast.className = `order-toast ${notification.orderType === 'BUY' ? 'buy' : 'sell'}`;
+    toast.innerHTML = `
+        <span class="order-toast-kicker">ORDER FILLED</span>
+        <strong>${escapeHtml(stockName)} ${orderTypeText} 체결</strong>
+        <span>${quantity}주 · ${price}원</span>
+        <em>체결금액 ${totalAmount}원</em>
+    `;
+
+    toast.addEventListener('click', () => {
+        if (symbol) {
+            window.location.href = `/stocks/detail?keyword=${encodeURIComponent(symbol)}`;
+        }
+    });
+
+    container.prepend(toast);
+
+    requestAnimationFrame(() => {
+        toast.classList.add('visible');
+    });
+
+    setTimeout(() => {
+        removeOrderToast(toast);
+    }, 6500);
+}
+
+// toast 컨테이너가 없으면 생성해서 어느 화면에서도 알림을 표시할 수 있게 한다.
+function getOrderToastContainer() {
+    let container = document.getElementById('order-toast-container');
+
+    if (container) {
+        return container;
+    }
+
+    container = document.createElement('div');
+    container.id = 'order-toast-container';
+    container.className = 'order-toast-container';
+    container.setAttribute('aria-live', 'polite');
+    document.body.appendChild(container);
+
+    return container;
+}
+
+// 체결 알림 toast를 부드럽게 제거한다.
+function removeOrderToast(toast) {
+    if (!toast) {
+        return;
+    }
+
+    toast.classList.remove('visible');
+    toast.classList.add('closing');
+
+    setTimeout(() => {
+        toast.remove();
+    }, 220);
+}
+
+// 주문 체결 알림 WebSocket을 닫는다.
+function closeOrderNotificationSocket() {
+    if (orderNotificationSocket) {
+        orderNotificationSocket.close();
+        orderNotificationSocket = null;
+    }
 }
 
 function bindMyInfoModal() {

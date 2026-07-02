@@ -21,7 +21,7 @@ public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
     private final StockRealtimeSessionRegistry sessionRegistry;
     private final KisRealtimeWebSocketClient kisRealtimeWebSocketClient;
 
-    // 브라우저가 보낸 SUBSCRIBE 메시지를 검증하고 해당 종목 실시간 데이터를 구독한다.
+    // 브라우저가 보낸 SUBSCRIBE 또는 ORDER_NOTIFICATION_SUBSCRIBE 메시지를 검증하고 실시간 데이터를 구독한다.
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         ClientSubscribeRequest request = objectMapper.readValue(
@@ -29,12 +29,24 @@ public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
                 ClientSubscribeRequest.class
         );
 
-        if (!"SUBSCRIBE".equalsIgnoreCase(request.type())) {
+        if (request.token() == null || !jwtUtil.validateToken(request.token())) {
+            session.close(CloseStatus.POLICY_VIOLATION);
             return;
         }
 
-        if (request.token() == null || !jwtUtil.validateToken(request.token())) {
-            session.close(CloseStatus.POLICY_VIOLATION);
+        if ("ORDER_NOTIFICATION_SUBSCRIBE".equalsIgnoreCase(request.type())) {
+            String email = jwtUtil.getEmailFromToken(request.token());
+            sessionRegistry.subscribeUser(email, session);
+
+            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(Map.of(
+                    "type", "ORDER_NOTIFICATION_SUBSCRIBED"
+            ))));
+
+            log.info("Browser order notification subscribed. email={}, sessionId={}", email, session.getId());
+            return;
+        }
+
+        if (!"SUBSCRIBE".equalsIgnoreCase(request.type())) {
             return;
         }
 
