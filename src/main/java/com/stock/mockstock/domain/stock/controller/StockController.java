@@ -8,6 +8,9 @@ import com.stock.mockstock.domain.stock.service.StockQuoteService;
 import com.stock.mockstock.domain.stock.service.StockService;
 import com.stock.mockstock.domain.stock.dto.StockPriceHistoryResponse;
 import com.stock.mockstock.domain.stock.service.StockPriceHistoryService;
+import com.stock.mockstock.domain.stock.dto.OrderbookResponse;
+import com.stock.mockstock.domain.stock.service.OrderbookService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +24,7 @@ public class StockController {
     private final StockService stockService;
     private final StockQuoteService stockQuoteService;
     private final StockPriceHistoryService stockPriceHistoryService;
+    private final OrderbookService orderbookService;
 
     // 키워드로 종목 검색
     @GetMapping("/search")
@@ -60,4 +64,11 @@ public class StockController {
     ) {
         return stockPriceHistoryService.getPriceHistories(symbol, period);
     }
+
+    // 종목코드 기준 호가 정보 조회
+    @GetMapping("/{symbol}/orderbook")
+    public OrderbookResponse getStockOrderbook(@PathVariable String symbol) {
+        return orderbookService.getOrderbook(symbol);
+    }
+
 }

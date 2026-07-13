@@ -6,7 +6,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import com.stock.mockstock.global.config.KisProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
+@EnableScheduling
 @EnableConfigurationProperties(KisProperties.class)
 @EnableJpaAuditing
 @SpringBootApplication

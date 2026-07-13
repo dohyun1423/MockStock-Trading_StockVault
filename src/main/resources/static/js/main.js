@@ -1,9 +1,16 @@
+// 메인 화면의 관심종목, 차트, 상세정보, 포트폴리오 탭 렌더링을 처리한다.
 let selectedWatchlistSymbol = null;
 let draggedWatchlistId = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const authenticated = await waitAuthReady();
+
+    if (!authenticated) {
+        return;
+    }
+
     bindDashboardTabs();
-    loadWatchlists();
+    await loadWatchlists();
 });
 
 // 메인 화면의 관심종목/내 주식 탭 전환
@@ -48,21 +55,15 @@ function openStockFromPortfolio(symbol) {
 
 // 내 관심 종목 리스트 불러오기
 async function loadWatchlists() {
-    const accessToken = localStorage.getItem('accessToken');
     const watchlistPanel = document.querySelector('.watchlist-panel');
 
-    if (!accessToken || !watchlistPanel) {
+    if (!watchlistPanel) {
         return;
     }
 
-    const response = await fetch('/api/watchlists', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`
-        }
-    });
+    const response = await authFetch('/api/watchlists');
 
-    if (!response.ok) {
+    if (!response || !response.ok) {
         return;
     }
 
@@ -186,21 +187,14 @@ function markSelectedWatchlist(watchlistId) {
 }
 
 async function saveWatchlistOrder() {
-    const accessToken = localStorage.getItem('accessToken');
-
-    if (!accessToken) {
-        return;
-    }
-
     const ids = Array.from(document.querySelectorAll('.watchlist-item'))
         .map((button) => Number(button.dataset.watchlistId))
         .filter((id) => Number.isFinite(id));
 
-    await fetch('/api/watchlists/order', {
+    await authFetch('/api/watchlists/order', {
         method: 'PATCH',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({
             watchlistIds: ids
@@ -234,20 +228,13 @@ async function selectWatchlistStock(stockName, symbol = null) {
 }
 
 async function fetchStockDetail(stockName) {
-    const accessToken = localStorage.getItem('accessToken');
-
-    if (!accessToken) {
+    if (!stockName) {
         return null;
     }
 
-    const response = await fetch(`/api/stocks/detail?name=${encodeURIComponent(stockName)}`, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`
-        }
-    });
+    const response = await authFetch(`/api/stocks/detail?name=${encodeURIComponent(stockName)}`);
 
-    if (!response.ok) {
+    if (!response || !response.ok) {
         return null;
     }
 
@@ -256,20 +243,13 @@ async function fetchStockDetail(stockName) {
 
 // 종목코드로 종목 상세 정보 조회
 async function fetchStockDetailBySymbol(symbol) {
-    const accessToken = localStorage.getItem('accessToken');
-
-    if (!accessToken || !symbol) {
+    if (!symbol) {
         return null;
     }
 
-    const response = await fetch(`/api/stocks/symbol/${encodeURIComponent(symbol)}`, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`
-        }
-    });
+    const response = await authFetch(`/api/stocks/symbol/${encodeURIComponent(symbol)}`);
 
-    if (!response.ok) {
+    if (!response || !response.ok) {
         return null;
     }
 
@@ -277,20 +257,13 @@ async function fetchStockDetailBySymbol(symbol) {
 }
 
 async function fetchStockQuote(symbol) {
-    const accessToken = localStorage.getItem('accessToken');
-
-    if (!accessToken || !symbol) {
+    if (!symbol) {
         return null;
     }
 
-    const response = await fetch(`/api/stocks/${encodeURIComponent(symbol)}/quote`, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`
-        }
-    });
+    const response = await authFetch(`/api/stocks/${encodeURIComponent(symbol)}/quote`);
 
-    if (!response.ok) {
+    if (!response || !response.ok) {
         return null;
     }
 
@@ -299,20 +272,15 @@ async function fetchStockQuote(symbol) {
 
 // 종목코드와 기간으로 차트용 가격 이력 조회
 async function fetchStockPriceHistories(symbol, period) {
-    const accessToken = localStorage.getItem('accessToken');
-
-    if (!accessToken || !symbol) {
+    if (!symbol) {
         return [];
     }
 
-    const response = await fetch(`/api/stocks/${encodeURIComponent(symbol)}/prices?period=${encodeURIComponent(period)}`, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${accessToken}`
-        }
+    const response = await authFetch(`/api/stocks/${encodeURIComponent(symbol)}/prices?period=${encodeURIComponent(period)}`, {
+        cache: 'no-store'
     });
 
-    if (!response.ok) {
+    if (!response || !response.ok) {
         return [];
     }
 
@@ -339,23 +307,17 @@ function renderMainChart(stockName, priceHistories = [], symbol = null, activePe
         return;
     }
 
-    const points = createChartPoints(priceHistories);
-    const linePath = createLinePath(points);
-    const areaPath = createAreaPath(points);
     // 차트 데이터가 있을 때만 상승/하락 색상을 계산한다.
-    const hasChartData = points.length > 0 && Array.isArray(priceHistories) && priceHistories.length > 0;
+    const hasChartData = Array.isArray(priceHistories) && priceHistories.length > 0;
     const firstPrice = hasChartData ? Number(priceHistories[0]?.closePrice || 0) : 0;
     const latestPrice = hasChartData ? Number(priceHistories[priceHistories.length - 1]?.closePrice || 0) : 0;
     // 메인 화면의 정보 카드와 차트 색상이 같은 등락 기준을 쓰도록 quote를 우선 사용한다.
     const chartClass = resolveMainChartClass(quote, hasChartData, firstPrice, latestPrice);
-    const chartColor = chartClass === 'down' ? '#3b82f6' : '#ff4560';
-    const chartAreaId = chartClass === 'down' ? 'mainChartAreaDown' : 'mainChartAreaUp';
 
     chartPanel.innerHTML = `
         <div class="panel-header chart-main-header">
             <div class="chart-title-row">
                 <div>
-                    <p class="panel-kicker">// SELECTED STOCK</p>
                     <h1>${escapeHtml(stockName)}</h1>
                 </div>
 
@@ -410,31 +372,8 @@ function renderMainChart(stockName, priceHistories = [], symbol = null, activePe
             <div class="chart-grid"></div>
 
             ${
-                points.length > 0
-                    ? `
-                        <svg class="mock-chart" viewBox="0 0 900 420" preserveAspectRatio="none">
-                            <defs>
-                                <linearGradient id="mainChartAreaUp" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stop-color="#ff4560" stop-opacity="0.18"/>
-                                    <stop offset="100%" stop-color="#ff4560" stop-opacity="0"/>
-                                </linearGradient>
-
-                                <linearGradient id="mainChartAreaDown" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.18"/>
-                                    <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
-                                </linearGradient>
-                            </defs>
-
-                            <path d="${areaPath}" fill="url(#${chartAreaId})"></path>
-                            <path
-                                class="chart-line ${chartClass}"
-                                d="${linePath}"
-                                style="stroke: ${chartColor};"
-                            ></path>
-                        </svg>
-
-                        <div class="chart-watermark">PRICE HISTORY</div>
-                    `
+                hasChartData
+                    ? createMainChartMarkup(priceHistories, chartClass)
                     : `
                         <div class="chart-placeholder">
                             <p>가격 이력이 없습니다.</p>
@@ -446,10 +385,182 @@ function renderMainChart(stockName, priceHistories = [], symbol = null, activePe
     `;
 
     bindChartPeriodButtons(stockName, symbol, quote);
+    bindMainChartTooltip();
     bindChartActionButtons();
 }
 
 // 차트 상단의 매수, 매도, 관심 버튼 연결
+// 상세페이지 차트와 같은 좌표/라벨/포인트 구조로 메인 차트 SVG를 만든다.
+function createMainChartMarkup(priceHistories, chartClass) {
+    const width = 900;
+    const height = 360;
+    const paddingTop = 24;
+    const paddingRight = 72;
+    const paddingBottom = 34;
+    const paddingLeft = 34;
+    const chartColor = chartClass === 'down' ? '#3b82f6' : '#ff4560';
+
+    const prices = priceHistories.flatMap((item) => [
+        Number(item.highPrice || item.closePrice || 0),
+        Number(item.lowPrice || item.closePrice || 0),
+        Number(item.closePrice || 0)
+    ]);
+
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const priceRange = maxPrice - minPrice || 1;
+    const first = priceHistories[0];
+    const latest = priceHistories[priceHistories.length - 1];
+
+    const points = priceHistories.map((item, index) => {
+        const price = Number(item.closePrice || 0);
+        const x = paddingLeft + index * ((width - paddingLeft - paddingRight) / Math.max(priceHistories.length - 1, 1));
+        const y = height - paddingBottom - ((price - minPrice) / priceRange) * (height - paddingTop - paddingBottom);
+
+        return {
+            x,
+            y,
+            price,
+            label: item.label
+        };
+    });
+
+    const linePath = points.map((point, index) => {
+        const command = index === 0 ? 'M' : 'L';
+        return `${command}${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+    }).join(' ');
+
+    const yLabels = createMainChartPriceLabels(minPrice, maxPrice, 5).map((price) => {
+        const y = height - paddingBottom - ((price - minPrice) / priceRange) * (height - paddingTop - paddingBottom);
+
+        return {
+            price,
+            y
+        };
+    });
+
+    return `
+        <svg class="mock-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+            ${yLabels.map((label) => `
+                <line
+                    class="main-chart-guide"
+                    x1="${paddingLeft}"
+                    y1="${label.y.toFixed(1)}"
+                    x2="${width - paddingRight}"
+                    y2="${label.y.toFixed(1)}"
+                ></line>
+                <text
+                    class="main-chart-price-label"
+                    x="${width - paddingRight + 12}"
+                    y="${label.y.toFixed(1)}"
+                    dominant-baseline="middle"
+                >${formatNumber(Math.round(label.price))}</text>
+            `).join('')}
+
+            <path
+                class="chart-line ${chartClass}"
+                d="${linePath}"
+                style="stroke: ${chartColor};"
+            ></path>
+            ${points.slice(1).map((point, index) => {
+                const prevPoint = points[index];
+        
+                return `
+                    <path
+                        class="main-chart-hover-line"
+                        d="M${prevPoint.x.toFixed(1)},${prevPoint.y.toFixed(1)} L${point.x.toFixed(1)},${point.y.toFixed(1)}"
+                        data-chart-label="${escapeHtml(point.label)}"
+                        data-chart-price="${formatNumber(point.price)}원"
+                    ></path>
+                `;
+            }).join('')}
+            ${points.map((point, index) => {
+        const step = Math.ceil(points.length / 6);
+
+        if (index !== 0 && index !== points.length - 1 && index % step !== 0) {
+            return '';
+        }
+
+        return `
+                <circle
+                    class="main-chart-point ${chartClass}"
+                    cx="${point.x.toFixed(1)}"
+                    cy="${point.y.toFixed(1)}"
+                    r="3"
+                    style="fill: ${chartColor};"
+                >
+                    <title>${escapeHtml(point.label)} / ${formatNumber(point.price)}원</title>
+                </circle>
+            `;
+    }).join('')}
+        </svg>
+
+        <div class="main-chart-axis">
+            <span>${escapeHtml(first.label)}</span>
+            <span>${escapeHtml(latest.label)}</span>
+        </div>
+
+        <div class="chart-watermark">PRICE HISTORY</div>
+    `;
+}
+
+// 상세페이지 차트처럼 오른쪽 가격 라벨 값을 균등하게 만든다.
+// 메인 차트 선 위에 마우스를 올리면 상세 차트와 같은 커스텀 툴팁을 표시한다.
+function bindMainChartTooltip() {
+    const chartBox = document.querySelector('.main-chart-box');
+
+    if (!chartBox) {
+        return;
+    }
+
+    let tooltip = document.getElementById('main-chart-tooltip');
+
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'main-chart-tooltip';
+        tooltip.className = 'main-chart-tooltip';
+        document.body.appendChild(tooltip);
+    }
+
+    chartBox.querySelectorAll('.main-chart-hover-line').forEach((line) => {
+        line.addEventListener('mouseenter', () => {
+            const label = line.dataset.chartLabel || '-';
+            const price = line.dataset.chartPrice || '-';
+
+            tooltip.innerHTML = `
+                <span>${escapeHtml(label)}</span>
+                <strong>${escapeHtml(price)}</strong>
+            `;
+            tooltip.style.display = 'block';
+        });
+
+        line.addEventListener('mousemove', (event) => {
+            const offset = 14;
+            const maxLeft = window.innerWidth - tooltip.offsetWidth - offset;
+            const maxTop = window.innerHeight - tooltip.offsetHeight - offset;
+
+            tooltip.style.left = `${Math.max(offset, Math.min(event.clientX + offset, maxLeft))}px`;
+            tooltip.style.top = `${Math.max(offset, Math.min(event.clientY + offset, maxTop))}px`;
+        });
+
+        line.addEventListener('mouseleave', () => {
+            tooltip.style.display = 'none';
+        });
+    });
+}
+
+function createMainChartPriceLabels(minPrice, maxPrice, count) {
+    if (count <= 1 || minPrice === maxPrice) {
+        return [maxPrice];
+    }
+
+    const step = (maxPrice - minPrice) / (count - 1);
+
+    return Array.from({ length: count }, (_, index) => {
+        return maxPrice - step * index;
+    });
+}
+
 function bindChartActionButtons() {
     const tradeButtons = document.querySelectorAll('.chart-trade-btn');
 
@@ -489,24 +600,21 @@ function bindChartActionButtons() {
 
 // 메인 차트에서 관심종목 추가
 async function addMainWatchlist(stockName) {
-    const accessToken = localStorage.getItem('accessToken');
-
-    if (!accessToken || !stockName) {
+    if (!stockName) {
         return false;
     }
 
-    const response = await fetch('/api/watchlists', {
+    const response = await authFetch('/api/watchlists', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify({
             stockName: stockName
         })
     });
 
-    return response.ok;
+    return !!response && response.ok;
 }
 
 // 차트 기간 버튼 클릭 시 같은 quote 기준으로 상승/하락 색상을 유지한다.
@@ -527,52 +635,6 @@ function bindChartPeriodButtons(stockName, symbol, quote = null) {
     });
 }
 
-// 가격 이력을 SVG 좌표로 변환
-function createChartPoints(priceHistories) {
-    if (!priceHistories || priceHistories.length === 0) {
-        return [];
-    }
-
-    const width = 900;
-    const height = 420;
-    const padding = 36;
-    const prices = priceHistories.map((item) => Number(item.closePrice));
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const priceRange = maxPrice - minPrice || 1;
-
-    return priceHistories.map((item, index) => {
-        const price = Number(item.closePrice);
-        const x = padding + index * ((width - padding * 2) / Math.max(priceHistories.length - 1, 1));
-        const y = height - padding - ((price - minPrice) / priceRange) * (height - padding * 2);
-
-        return { x, y };
-    });
-}
-
-// SVG 선 차트 path 생성
-function createLinePath(points) {
-    return points
-        .map((point, index) => {
-            const command = index === 0 ? 'M' : 'L';
-            return `${command}${point.x.toFixed(1)},${point.y.toFixed(1)}`;
-        })
-        .join(' ');
-}
-
-// SVG 영역 차트 path 생성
-function createAreaPath(points) {
-    if (points.length === 0) {
-        return '';
-    }
-
-    const linePath = createLinePath(points);
-    const firstPoint = points[0];
-    const lastPoint = points[points.length - 1];
-
-    return `${linePath} L${lastPoint.x.toFixed(1)},420 L${firstPoint.x.toFixed(1)},420 Z`;
-}
-
 function renderStockSideInfo(stockName, stock, quote) {
     const sidePanel = document.querySelector('.side-panel');
 
@@ -584,14 +646,8 @@ function renderStockSideInfo(stockName, stock, quote) {
         sidePanel.innerHTML = `
             <div class="panel-header">
                 <div>
-                    <p class="panel-kicker">// STOCK INFO</p>
-                    <h2>DETAILS</h2>
+                    <h2>${escapeHtml(stockName || 'DETAILS')}</h2>
                 </div>
-            </div>
-
-            <div class="stock-info-card primary">
-                <span class="info-label">종목명</span>
-                <strong>${escapeHtml(stockName)}</strong>
             </div>
 
             <section class="stock-info-section">
@@ -607,14 +663,8 @@ function renderStockSideInfo(stockName, stock, quote) {
     sidePanel.innerHTML = `
         <div class="panel-header">
             <div>
-                <p class="panel-kicker">// STOCK INFO</p>
-                <h2>DETAILS</h2>
+                <h2>${escapeHtml(stock.name)}</h2>
             </div>
-        </div>
-
-        <div class="stock-info-card primary">
-            <span class="info-label">종목명</span>
-            <strong>${escapeHtml(stock.name)}</strong>
         </div>
 
         <div class="stock-info-grid">

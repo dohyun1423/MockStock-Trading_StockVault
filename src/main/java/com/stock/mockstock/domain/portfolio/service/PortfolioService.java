@@ -44,6 +44,8 @@ public class PortfolioService {
 
         return new PortfolioResponse(
                 user.getCash(),
+                user.getReservedCash(),
+                user.getAvailableCash(),
                 totalAsset,
                 totalEvaluation,
                 totalPurchaseAmount,
@@ -65,6 +67,8 @@ public class PortfolioService {
                 holding.getStock().getName(),
                 holding.getStock().getSymbol(),
                 holding.getQuantity(),
+                holding.getReservedQuantity(),
+                holding.getAvailableQuantity(),
                 holding.getAveragePrice(),
                 currentPrice,
                 evaluationAmount,

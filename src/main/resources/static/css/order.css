@@ -1,3 +1,4 @@
+/* 매수/매도 주문 모달과 주문 입력 컨트롤 스타일을 정의한다. */
 .order-modal-overlay {
     position: fixed;
     inset: 0;
@@ -126,6 +127,82 @@
     color: #000;
 }
 
+.order-price-field {
+    margin-top: 14px;
+}
+
+.order-price-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.order-current-price-btn {
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.order-price-control {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr) 72px;
+    gap: 8px;
+}
+
+.order-price-control input {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    text-align: right;
+    outline: none;
+}
+
+.order-price-control input::-webkit-outer-spin-button,
+.order-price-control input::-webkit-inner-spin-button,
+.order-quantity-field input::-webkit-outer-spin-button,
+.order-quantity-field input::-webkit-inner-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
+.order-price-control input[type='number'],
+.order-quantity-field input[type='number'] {
+    -moz-appearance: textfield;
+}
+
+.order-price-step-label {
+    margin-top: 6px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-align: right;
+}
+
+.order-price-step-btn {
+    height: 42px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.order-price-step-btn:hover,
+.order-current-price-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
 .order-quantity-field {
     display: block;
     margin-top: 14px;
@@ -172,4 +249,50 @@
 .order-submit-btn.sell {
     background: #60a5fa;
     color: #000;
+}
+
+.order-edit-actions {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.order-edit-cancel-btn {
+    height: 46px;
+    border: 1px solid rgba(255, 69, 96, 0.5);
+    background: rgba(255, 69, 96, 0.1);
+    color: #ff4560;
+    font-family: var(--font-body);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.order-edit-cancel-btn:hover {
+    background: rgba(255, 69, 96, 0.2);
+}
+
+.order-edit-submit-btn {
+    margin-top: 0;
+}
+
+.order-session-card {
+    margin-bottom: 14px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    background: rgba(15, 25, 35, 0.72);
+}
+
+.order-session-card strong {
+    display: block;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+}
+
+.order-session-card p {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
 }

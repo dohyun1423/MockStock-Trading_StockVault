@@ -1,3 +1,4 @@
+// 사용자별 관심종목 조회, 정렬, 중복 확인, 삭제를 담당하는 Repository다.
 package com.stock.mockstock.domain.watchlist.repository;
 
 import com.stock.mockstock.domain.user.entity.User;
@@ -9,6 +10,7 @@ import java.util.List;
 
 public interface WatchlistRepository extends JpaRepository<Watchlist, Long> {
 
+    // 사용자의 관심종목을 정렬 순서와 생성 순서 기준으로 조회한다.
     @Query("""
             select w
             from Watchlist w
@@ -17,6 +19,7 @@ public interface WatchlistRepository extends JpaRepository<Watchlist, Long> {
             """)
     List<Watchlist> findAllByUserOrderBySortOrder(User user);
 
+    // 사용자의 관심종목 중 가장 큰 정렬 순서를 조회한다.
     @Query("""
             select max(w.sortOrder)
             from Watchlist w
@@ -24,7 +27,9 @@ public interface WatchlistRepository extends JpaRepository<Watchlist, Long> {
             """)
     Integer findMaxSortOrderByUser(User user);
 
+    // 사용자가 같은 종목명을 이미 관심종목으로 등록했는지 확인한다.
     boolean existsByUserAndStockName(User user, String stockName);
 
+    // 사용자의 관심종목에서 지정한 종목명을 삭제한다.
     void deleteByUserAndStockName(User user, String stockName);
 }

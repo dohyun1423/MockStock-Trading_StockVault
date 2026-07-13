@@ -14,4 +14,5 @@ public class KisProperties {
     private String appKey;
     private String appSecret;
     private String provider;
+    private String websocketUrl;
 }

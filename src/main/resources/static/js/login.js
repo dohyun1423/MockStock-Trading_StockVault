@@ -1,3 +1,4 @@
+// 로그인 화면의 입력값 검증, 로그인 요청, 토큰 저장을 처리한다.
 const style = document.createElement('style');
 style.textContent = '@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }';
 document.head.appendChild(style);

@@ -27,7 +27,6 @@
     <main class="main-layout">
         <aside class="watchlist-panel">
             <div class="panel-header">
-                <p class="panel-kicker">// WATCHLIST</p>
                 <h2>MY STOCKS</h2>
             </div>
 
@@ -39,7 +38,6 @@
 
         <section class="chart-panel">
             <div class="panel-header">
-                <p class="panel-kicker">// MARKET</p>
                 <h1>CHART</h1>
             </div>
 
@@ -51,7 +49,6 @@
 
         <aside class="side-panel">
             <div class="panel-header">
-                <p class="panel-kicker">// PANEL</p>
                 <h2>DETAILS</h2>
             </div>
         </aside>
@@ -64,6 +61,16 @@
             <div class="summary-card">
                 <span>보유 현금</span>
                 <strong id="cash-balance">-</strong>
+            </div>
+
+            <div class="summary-card">
+                <span>주문 가능</span>
+                <strong id="available-cash">-</strong>
+            </div>
+
+            <div class="summary-card">
+                <span>예약 현금</span>
+                <strong id="reserved-cash">-</strong>
             </div>
 
             <div class="summary-card">
@@ -89,7 +96,6 @@
 
         <section class="holding-section">
             <div class="section-header">
-                <p class="panel-kicker">// HOLDINGS</p>
                 <h2>MY STOCKS</h2>
             </div>
 
@@ -101,9 +107,21 @@
             </div>
         </section>
 
+        <section class="open-order-section">
+            <div class="section-header">
+                <h2>OPEN ORDERS</h2>
+            </div>
+
+            <div class="open-order-table-wrap" id="open-order-table-wrap">
+                <div class="portfolio-empty small">
+                    <p>미체결 주문이 없습니다.</p>
+                    <span>원하는 가격으로 주문하면 이곳에서 확인하고 취소할 수 있습니다.</span>
+                </div>
+            </div>
+        </section>
+
         <section class="trade-section">
             <div class="section-header">
-                <p class="panel-kicker">// TRADE HISTORY</p>
                 <h2>TRADES</h2>
             </div>
 

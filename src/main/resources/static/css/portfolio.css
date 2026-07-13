@@ -1,3 +1,4 @@
+/* 포트폴리오 화면의 요약, 보유종목, 거래내역 스타일을 정의한다. */
 :root {
     --bg: #060a0e;
     --surface: #0b1018;
@@ -52,14 +53,6 @@ body {
     margin-bottom: 24px;
 }
 
-.panel-kicker {
-    margin-bottom: 8px;
-    color: var(--accent);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 3px;
-}
-
 .portfolio-header h1,
 .section-header h2 {
     font-family: var(--font-display);
@@ -81,7 +74,7 @@ body {
 
 .portfolio-summary-grid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 28px;
 }
@@ -122,27 +115,32 @@ body {
     border-top: 1px solid var(--border);
 }
 
-.holding-table-wrap {
+.holding-table-wrap,
+.open-order-table-wrap {
     border: 1px solid var(--border);
     background: rgba(15, 25, 35, 0.45);
     overflow-x: auto;
 }
 
-.holding-table {
+.holding-table,
+.open-order-table {
     width: 100%;
     border-collapse: collapse;
     min-width: 980px;
 }
 
 .holding-table th,
-.holding-table td {
+.holding-table td,
+.open-order-table th,
+.open-order-table td {
     padding: 14px 16px;
     border-bottom: 1px solid var(--border);
     text-align: right;
     white-space: nowrap;
 }
 
-.holding-table th {
+.holding-table th,
+.open-order-table th {
     color: var(--muted);
     font-family: var(--font-mono);
     font-size: 10px;
@@ -150,14 +148,17 @@ body {
     font-weight: 400;
 }
 
-.holding-table td {
+.holding-table td,
+.open-order-table td {
     color: var(--text);
     font-family: var(--font-mono);
     font-size: 13px;
 }
 
 .holding-table th:first-child,
-.holding-table td:first-child {
+.holding-table td:first-child,
+.open-order-table th:first-child,
+.open-order-table td:first-child {
     text-align: left;
 }
 
@@ -212,6 +213,10 @@ body {
     color: var(--muted);
 }
 
+.portfolio-empty.small {
+    min-height: 160px;
+}
+
 .portfolio-empty p {
     color: var(--text);
     font-size: 15px;
@@ -228,11 +233,33 @@ body {
     }
 }
 
+.open-order-section,
 .trade-section {
     margin-top: 28px;
     padding-top: 22px;
     padding-bottom: 48px;
     border-top: 1px solid var(--border);
+}
+
+.open-order-cancel-btn {
+    width: 58px;
+    height: 30px;
+    border: 1px solid rgba(255, 69, 96, 0.5);
+    background: rgba(255, 69, 96, 0.1);
+    color: var(--red);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.open-order-cancel-btn:hover {
+    background: rgba(255, 69, 96, 0.2);
+}
+
+.open-order-cancel-btn:disabled {
+    cursor: wait;
+    opacity: 0.55;
 }
 
 .trade-table-wrap {
@@ -298,6 +325,11 @@ body {
     cursor: pointer;
 }
 
-.holding-row:hover {
+.holding-row:hover,
+.open-order-row:hover {
     background: rgba(0, 229, 160, 0.04);
+}
+
+.open-order-row {
+    cursor: pointer;
 }

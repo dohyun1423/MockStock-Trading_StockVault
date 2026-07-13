@@ -12,6 +12,8 @@ import java.util.List;
 public class PortfolioResponse {
 
     private Long cashBalance;
+    private Long reservedCash;
+    private Long availableCash;
     private Long totalAsset;
     private Long totalEvaluation;
     private Long totalPurchaseAmount;
