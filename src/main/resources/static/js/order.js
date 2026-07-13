@@ -1,3 +1,4 @@
+// 주문 모달의 현재가 조회, 주문가/수량 입력, 매수/매도 요청을 처리한다.
 let orderState = {
     symbol: '',
     stockName: '',

@@ -1,3 +1,4 @@
+// 현재 거래 세션과 주문 가능 여부를 프론트에 전달하는 응답 DTO다.
 package com.stock.mockstock.domain.order.dto;
 
 import com.stock.mockstock.domain.order.enumtype.MarketSession;

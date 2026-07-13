@@ -1,3 +1,4 @@
+// 공통 헤더의 인증 확인, 검색, 내정보 수정, 토큰 연장, 주문 체결 알림을 처리한다.
 let currentUserInfo = null;
 let tokenTimerId = null;
 let orderNotificationSocket = null;
@@ -14,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     connectOrderNotificationSocket();
 });
 
+// 저장된 JWT로 로그인 상태를 확인하고 헤더 사용자 정보를 초기화한다.
 async function initializeAuth() {
     const accessToken = localStorage.getItem('accessToken');
 
@@ -57,6 +59,7 @@ async function initializeAuth() {
     }
 }
 
+// 보호 API 호출 전에 공통 인증 초기화가 끝날 때까지 기다린다.
 async function waitAuthReady() {
     if (!window.authReady) {
         window.authReady = initializeAuth();
@@ -65,11 +68,13 @@ async function waitAuthReady() {
     return await window.authReady;
 }
 
+// 저장된 JWT를 제거하고 로그인 화면으로 이동한다.
 function redirectToLogin() {
     localStorage.removeItem('accessToken');
     window.location.replace('/login');
 }
 
+// 인증 실패로 처리할 응답인지 확인한다.
 function isAuthError(response) {
     return response && response.status === 401;
 }
@@ -105,6 +110,7 @@ async function authFetch(url, options = {}) {
     return response;
 }
 
+// 공통 헤더 검색창의 입력, 제출, 외부 클릭 이벤트를 연결한다.
 function bindStockSearch() {
     const form = document.getElementById('stock-search-form');
     const input = document.getElementById('stock-search-input');
@@ -155,6 +161,7 @@ function bindStockSearch() {
     });
 }
 
+// 키워드로 종목을 검색하고 결과 목록을 갱신한다.
 async function searchStocks(keyword) {
     const response = await authFetch(`/api/stocks/search?keyword=${encodeURIComponent(keyword)}`);
 
@@ -167,6 +174,7 @@ async function searchStocks(keyword) {
     renderSearchResults(stocks);
 }
 
+// 종목 검색 결과를 검색창 하단 목록으로 렌더링한다.
 function renderSearchResults(stocks) {
     const results = document.getElementById('stock-search-results');
 
@@ -192,6 +200,7 @@ function renderSearchResults(stocks) {
     results.classList.add('active');
 }
 
+// 종목 검색 결과 목록을 비우고 닫는다.
 function clearSearchResults() {
     const results = document.getElementById('stock-search-results');
 
@@ -203,10 +212,12 @@ function clearSearchResults() {
     results.classList.remove('active');
 }
 
+// 선택한 종목 심볼 기준으로 상세 페이지로 이동한다.
 function goStockDetail(symbol) {
     window.location.href = `/stocks/detail?keyword=${encodeURIComponent(symbol)}`;
 }
 
+// 로그아웃 시 토큰과 주문 알림 WebSocket을 정리한다.
 function handleLogout() {
     localStorage.removeItem('accessToken');
     closeOrderNotificationSocket();
@@ -348,6 +359,7 @@ function closeOrderNotificationSocket() {
     }
 }
 
+// 내정보 모달 열기, 닫기, 수정 폼 이벤트를 연결한다.
 function bindMyInfoModal() {
     const profileButton = document.getElementById('profile-menu-btn');
     const myInfoOverlay = document.getElementById('my-info-modal-overlay');
@@ -368,6 +380,7 @@ function bindMyInfoModal() {
     bindPasswordUpdateForm();
 }
 
+// 현재 사용자 정보를 내정보 모달에 채우고 모달을 연다.
 function showMyInfo() {
     const overlay = document.getElementById('my-info-modal-overlay');
 
@@ -385,6 +398,7 @@ function showMyInfo() {
     overlay.classList.add('active');
 }
 
+// 내정보 모달을 닫는다.
 function closeMyInfoModal() {
     const overlay = document.getElementById('my-info-modal-overlay');
 
@@ -524,6 +538,7 @@ function setInputValue(id, value) {
     }
 }
 
+// 지정한 id의 텍스트 콘텐츠를 안전하게 변경한다.
 function setHeaderText(id, value) {
     const element = document.getElementById(id);
 
@@ -532,6 +547,7 @@ function setHeaderText(id, value) {
     }
 }
 
+// 사용자 입력 또는 API 값을 HTML 문자열에 넣기 전에 이스케이프한다.
 function escapeHtml(value) {
     return String(value || '')
         .replaceAll('&', '&amp;')
@@ -541,6 +557,7 @@ function escapeHtml(value) {
         .replaceAll("'", '&#039;');
 }
 
+// 토큰 수동 연장 버튼에 클릭 이벤트를 연결한다.
 function bindTokenRefreshButton() {
     const button = document.getElementById('token-refresh-btn');
 
@@ -594,6 +611,7 @@ function getTokenRemainingMs(token) {
     }
 }
 
+// 남은 로그인 시간을 mm:ss 형식으로 변환한다.
 function formatRemainingTime(milliseconds) {
     const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
     const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');

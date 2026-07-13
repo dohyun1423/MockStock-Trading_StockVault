@@ -63,7 +63,7 @@ public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        log.info("KIS websocket message={}", payload);
+        log.debug("KIS websocket message={}", payload);
     }
 
     @Override

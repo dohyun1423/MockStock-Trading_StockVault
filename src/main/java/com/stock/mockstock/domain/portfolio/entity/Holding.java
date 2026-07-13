@@ -1,3 +1,4 @@
+// 사용자의 종목별 보유 수량, 평균가, 예약 매도 수량을 관리하는 엔티티다.
 package com.stock.mockstock.domain.portfolio.entity;
 
 import com.stock.mockstock.domain.stock.entity.Stock;

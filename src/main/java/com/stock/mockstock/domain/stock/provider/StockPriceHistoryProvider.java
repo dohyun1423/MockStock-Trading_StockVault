@@ -1,3 +1,4 @@
+// 차트 가격 이력 데이터 제공 구현체가 공통으로 따라야 하는 인터페이스다.
 package com.stock.mockstock.domain.stock.provider;
 
 import com.stock.mockstock.domain.stock.dto.StockPriceHistoryResponse;

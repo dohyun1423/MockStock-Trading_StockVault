@@ -13,6 +13,7 @@ import com.stock.mockstock.domain.stock.entity.Stock;
 import com.stock.mockstock.domain.stock.realtime.StockRealtimeBroadcaster;
 import com.stock.mockstock.domain.user.entity.User;
 import com.stock.mockstock.domain.user.enumtype.Role;
+import com.stock.mockstock.global.audit.AuditLogService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,6 +41,9 @@ class OrderExecutionServiceTest {
 
     @Mock
     private StockRealtimeBroadcaster stockRealtimeBroadcaster;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private OrderExecutionService orderExecutionService;

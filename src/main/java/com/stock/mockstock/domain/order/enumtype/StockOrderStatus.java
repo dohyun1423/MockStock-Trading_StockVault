@@ -1,3 +1,4 @@
+// 예약 주문의 현재 처리 상태를 나타내는 enum이다.
 package com.stock.mockstock.domain.order.enumtype;
 
 // 사용자가 넣은 주문의 현재 처리 상태를 구분한다.

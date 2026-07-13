@@ -1,3 +1,4 @@
+// KIS 호가 API 응답의 output 데이터를 매핑하는 DTO다.
 package com.stock.mockstock.domain.stock.dto.kis;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

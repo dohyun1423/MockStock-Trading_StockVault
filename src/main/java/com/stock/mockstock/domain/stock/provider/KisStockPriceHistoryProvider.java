@@ -1,3 +1,4 @@
+// KIS 차트 API에서 1D/1W 분봉과 1M/1Y 일봉 데이터를 조회하는 provider다.
 package com.stock.mockstock.domain.stock.provider;
 
 import com.stock.mockstock.domain.stock.dto.StockPriceHistoryResponse;
@@ -21,7 +22,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.time.LocalDateTime;
 
 @Slf4j
 @Component
@@ -359,6 +359,7 @@ public class KisStockPriceHistoryProvider implements StockPriceHistoryProvider {
                 .body(KisMinuteChartResponse.class);
     }
 
+    // KIS 일봉 output을 화면 차트 응답 DTO로 변환한다.
     private StockPriceHistoryResponse toDailyResponse(KisDailyChartResponse.Output output) {
         return new StockPriceHistoryResponse(
                 formatDateLabel(output.getBusinessDate()),
@@ -370,6 +371,7 @@ public class KisStockPriceHistoryProvider implements StockPriceHistoryProvider {
         );
     }
 
+    // KIS 분봉 output을 화면 차트 응답 DTO로 변환한다.
     private StockPriceHistoryResponse toMinuteResponse(KisMinuteChartResponse.Output output) {
         return new StockPriceHistoryResponse(
                 formatMinuteLabel(output.getBusinessDate(), output.getTradeTime()),
@@ -381,6 +383,7 @@ public class KisStockPriceHistoryProvider implements StockPriceHistoryProvider {
         );
     }
 
+    // KIS 일봉 응답이 정상 구조와 성공 코드를 가지고 있는지 검증한다.
     private void validateDailyResponse(KisDailyChartResponse response) {
         if (response == null || response.getOutput2() == null) {
             throw new IllegalStateException("KIS daily chart response is empty.");
@@ -391,6 +394,7 @@ public class KisStockPriceHistoryProvider implements StockPriceHistoryProvider {
         }
     }
 
+    // KIS 분봉 응답이 정상 구조와 성공 코드를 가지고 있는지 검증한다.
     private void validateMinuteResponse(KisMinuteChartResponse response) {
         if (response == null || response.getOutput2() == null) {
             throw new IllegalStateException("KIS minute chart response is empty.");
@@ -401,6 +405,7 @@ public class KisStockPriceHistoryProvider implements StockPriceHistoryProvider {
         }
     }
 
+    // 1D 분봉 조회의 종료 시각을 현재 장중 시각 또는 장 마감 시각으로 결정한다.
     private LocalTime getMinuteChartEndTime() {
         LocalTime now = LocalTime.now();
         LocalTime marketOpen = LocalTime.of(9, 0);
@@ -426,10 +431,12 @@ public class KisStockPriceHistoryProvider implements StockPriceHistoryProvider {
         return LocalTime.of(15, 30);
     }
 
+    // KIS HHmmss 형식의 시각 문자열을 LocalTime으로 변환한다.
     private LocalTime parseKisTime(String value) {
         return LocalTime.parse(value, KIS_TIME_FORMATTER);
     }
 
+    // 종목코드를 KIS 요청에 사용할 수 있는 형식으로 정규화한다.
     private String normalizeSymbol(String symbol) {
         return String.valueOf(symbol)
                 .trim()
@@ -437,6 +444,7 @@ public class KisStockPriceHistoryProvider implements StockPriceHistoryProvider {
                 .toUpperCase();
     }
 
+    // 화면 기간 값을 지원 가능한 차트 기간으로 보정한다.
     private String normalizePeriod(String period) {
         if (period == null || period.isBlank()) {
             return "1M";
@@ -453,6 +461,7 @@ public class KisStockPriceHistoryProvider implements StockPriceHistoryProvider {
         return "D";
     }
 
+    // 화면 기간에 맞춰 일봉 조회 시작일을 계산한다.
     private LocalDate calculateStartDate(LocalDate endDate, String period) {
         return switch (period.toUpperCase()) {
             case "1M" -> endDate.minusMonths(1);
@@ -461,6 +470,7 @@ public class KisStockPriceHistoryProvider implements StockPriceHistoryProvider {
         };
     }
 
+    // KIS yyyyMMdd 형식의 날짜를 화면용 yyyy-MM-dd 형식으로 변환한다.
     private String formatDateLabel(String value) {
         if (value == null || value.length() != 8) {
             return value;
@@ -469,6 +479,7 @@ public class KisStockPriceHistoryProvider implements StockPriceHistoryProvider {
         return value.substring(0, 4) + "-" + value.substring(4, 6) + "-" + value.substring(6, 8);
     }
 
+    // KIS 날짜와 HHmmss 시각을 화면용 분봉 라벨로 변환한다.
     private String formatMinuteLabel(String date, String time) {
         if (time == null || time.length() != 6) {
             return formatDateLabel(date);
@@ -477,6 +488,7 @@ public class KisStockPriceHistoryProvider implements StockPriceHistoryProvider {
         return formatDateLabel(date) + " " + time.substring(0, 2) + ":" + time.substring(2, 4);
     }
 
+    // KIS 문자열 숫자 값을 long 타입으로 변환한다.
     private Long parseLong(String value) {
         if (value == null || value.isBlank()) {
             return 0L;

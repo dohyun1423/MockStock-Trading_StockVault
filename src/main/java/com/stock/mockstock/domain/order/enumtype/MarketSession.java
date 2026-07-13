@@ -1,3 +1,4 @@
+// 국내 주식 거래 시간대를 주문 처리 정책에 맞게 구분하는 enum이다.
 package com.stock.mockstock.domain.order.enumtype;
 
 // 현재 시간이 어떤 거래 세션에 속하는지 구분한다.

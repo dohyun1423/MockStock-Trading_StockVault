@@ -1,3 +1,4 @@
+// 차트 가격 이력 조회와 짧은 캐싱을 담당하는 서비스다.
 package com.stock.mockstock.domain.stock.service;
 
 import com.stock.mockstock.domain.stock.dto.StockPriceHistoryResponse;
@@ -41,14 +42,17 @@ public class StockPriceHistoryService {
         }
     }
 
+    // 종목코드와 기간을 캐시 키로 사용할 수 있게 정규화한다.
     private String normalizeCacheKey(String symbol, String period) {
         return String.valueOf(symbol).trim().toUpperCase() + ":" + String.valueOf(period).trim().toUpperCase();
     }
 
+    // 캐시된 차트 데이터와 만료 시각을 함께 보관한다.
     private record CachedHistories(
             List<StockPriceHistoryResponse> histories,
             LocalDateTime expiresAt
     ) {
+        // 캐시 만료 전인지 확인한다.
         private boolean isUsable() {
             return expiresAt != null && LocalDateTime.now().isBefore(expiresAt);
         }

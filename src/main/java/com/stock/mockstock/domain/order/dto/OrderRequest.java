@@ -1,3 +1,4 @@
+// 매수/매도 주문 요청에 필요한 종목코드, 수량, 주문가를 담는 DTO다.
 package com.stock.mockstock.domain.order.dto;
 
 import jakarta.validation.constraints.NotBlank;

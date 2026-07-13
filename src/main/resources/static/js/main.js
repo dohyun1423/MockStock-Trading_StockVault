@@ -1,3 +1,4 @@
+// 메인 화면의 관심종목, 차트, 상세정보, 포트폴리오 탭 렌더링을 처리한다.
 let selectedWatchlistSymbol = null;
 let draggedWatchlistId = null;
 

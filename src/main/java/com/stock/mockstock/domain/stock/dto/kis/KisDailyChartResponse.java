@@ -1,3 +1,4 @@
+// KIS 일봉 차트 API 응답을 매핑하는 DTO다.
 package com.stock.mockstock.domain.stock.dto.kis;
 
 import com.fasterxml.jackson.annotation.JsonProperty;

@@ -1,3 +1,4 @@
+// 주문 접수, 예약 자산 관리, 미체결 주문 수정/취소를 처리하는 서비스다.
 package com.stock.mockstock.domain.order.service;
 
 import com.stock.mockstock.domain.order.dto.OrderRequest;
@@ -17,6 +18,7 @@ import com.stock.mockstock.domain.stock.repository.StockRepository;
 import com.stock.mockstock.domain.stock.service.StockQuoteService;
 import com.stock.mockstock.domain.user.entity.User;
 import com.stock.mockstock.domain.user.repository.UserRepository;
+import com.stock.mockstock.global.audit.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,7 @@ public class OrderService {
     private final StockQuoteService stockQuoteService;
     private final MarketSessionService marketSessionService;
     private final OpenOrderRealtimeSubscriptionService openOrderRealtimeSubscriptionService;
+    private final AuditLogService auditLogService;
 
     // 매수 주문을 접수한다.
     public OrderResponse buy(String email, OrderRequest request) {
@@ -69,6 +72,14 @@ public class OrderService {
 
         releaseReservation(user, stockOrder);
         stockOrder.cancel();
+        auditLogService.record(
+                email,
+                "ORDER_CANCELED",
+                "ORDER",
+                String.valueOf(stockOrder.getId()),
+                "미체결 주문 취소",
+                createOrderMetadata(stockOrder)
+        );
 
         return StockOrderResponse.from(stockOrder);
     }
@@ -91,6 +102,14 @@ public class OrderService {
         }
 
         openOrderRealtimeSubscriptionService.subscribeTradeAfterCommit(stockOrder.getStock().getSymbol());
+        auditLogService.record(
+                email,
+                "ORDER_UPDATED",
+                "ORDER",
+                String.valueOf(stockOrder.getId()),
+                "미체결 주문 수정",
+                createOrderMetadata(stockOrder)
+        );
 
         return StockOrderResponse.from(stockOrder);
     }
@@ -128,6 +147,14 @@ public class OrderService {
         stockOrderRepository.save(stockOrder);
 
         openOrderRealtimeSubscriptionService.subscribeTradeAfterCommit(stock.getSymbol());
+        auditLogService.record(
+                email,
+                "ORDER_CREATED",
+                "ORDER",
+                stockOrder.getId() == null ? null : String.valueOf(stockOrder.getId()),
+                "미체결 주문 접수",
+                createOrderMetadata(stockOrder)
+        );
 
         return new OrderResponse(
                 stock.getName(),
@@ -313,5 +340,15 @@ public class OrderService {
         }
 
         return quote.getCurrentPrice();
+    }
+
+    // 주문 감사 로그에 필요한 최소 주문 정보를 문자열로 만든다.
+    private String createOrderMetadata(StockOrder stockOrder) {
+        return "symbol=" + stockOrder.getStock().getSymbol()
+                + ",orderType=" + stockOrder.getOrderType()
+                + ",orderPrice=" + stockOrder.getOrderPrice()
+                + ",quantity=" + stockOrder.getQuantity()
+                + ",remainingQuantity=" + stockOrder.getRemainingQuantity()
+                + ",status=" + stockOrder.getStatus();
     }
 }

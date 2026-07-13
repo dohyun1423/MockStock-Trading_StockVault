@@ -1,3 +1,4 @@
+/* 매수/매도 주문 모달과 주문 입력 컨트롤 스타일을 정의한다. */
 .order-modal-overlay {
     position: fixed;
     inset: 0;

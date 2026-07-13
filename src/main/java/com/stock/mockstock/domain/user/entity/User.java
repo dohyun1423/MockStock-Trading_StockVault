@@ -1,3 +1,4 @@
+// 로그인 사용자 계정, 보유 현금, 예약 현금을 관리하는 엔티티다.
 package com.stock.mockstock.domain.user.entity;
 
 import com.stock.mockstock.domain.user.enumtype.Role;

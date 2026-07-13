@@ -1,3 +1,4 @@
+// 미체결, 부분체결, 체결, 취소 상태를 관리하는 예약 주문 엔티티다.
 package com.stock.mockstock.domain.order.entity;
 
 import com.stock.mockstock.domain.order.enumtype.MarketSession;

@@ -19,6 +19,7 @@ import com.stock.mockstock.domain.stock.service.StockQuoteService;
 import com.stock.mockstock.domain.user.entity.User;
 import com.stock.mockstock.domain.user.enumtype.Role;
 import com.stock.mockstock.domain.user.repository.UserRepository;
+import com.stock.mockstock.global.audit.AuditLogService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,6 +63,9 @@ class OrderServiceTest {
 
     @Mock
     private OpenOrderRealtimeSubscriptionService openOrderRealtimeSubscriptionService;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private OrderService orderService;

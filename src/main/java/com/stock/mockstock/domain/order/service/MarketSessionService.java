@@ -1,3 +1,4 @@
+// 현재 한국 거래 시간을 기준으로 주문 가능 세션을 판단하는 서비스다.
 package com.stock.mockstock.domain.order.service;
 
 import com.stock.mockstock.domain.order.dto.MarketSessionResponse;

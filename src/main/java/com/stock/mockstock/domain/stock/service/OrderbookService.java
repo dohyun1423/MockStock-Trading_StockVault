@@ -1,3 +1,4 @@
+// 호가 provider를 통해 종목별 호가 데이터를 조회하는 서비스다.
 package com.stock.mockstock.domain.stock.service;
 
 import com.stock.mockstock.domain.stock.dto.OrderbookResponse;

@@ -1,3 +1,4 @@
+// 종목별 현재가와 호가 단계 목록을 전달하는 응답 DTO다.
 package com.stock.mockstock.domain.stock.dto;
 
 import lombok.AllArgsConstructor;

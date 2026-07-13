@@ -27,10 +27,6 @@ public class JwtUtil {
         key = Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
-    public String createToken(String email) {
-        return generateToken(email);
-    }
-
     // 이메일을 subject로 담아 JWT 생성
     public String generateToken(String email) {
         Date now = new Date();

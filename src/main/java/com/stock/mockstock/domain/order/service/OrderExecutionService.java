@@ -1,3 +1,4 @@
+// 조건을 만족한 예약 주문을 실제 체결로 반영하는 서비스다.
 package com.stock.mockstock.domain.order.service;
 
 import com.stock.mockstock.domain.order.dto.OrderExecutionNotification;
@@ -10,6 +11,7 @@ import com.stock.mockstock.domain.portfolio.repository.HoldingRepository;
 import com.stock.mockstock.domain.stock.entity.Stock;
 import com.stock.mockstock.domain.stock.realtime.StockRealtimeBroadcaster;
 import com.stock.mockstock.domain.user.entity.User;
+import com.stock.mockstock.global.audit.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +22,7 @@ public class OrderExecutionService {
     private final HoldingRepository holdingRepository;
     private final TradeRepository tradeRepository;
     private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
+    private final AuditLogService auditLogService;
 
     // StockOrder의 남은 수량 중 지정된 수량을 실제 체결 처리한다.
     public Long executeStockOrder(
@@ -71,6 +74,7 @@ public class OrderExecutionService {
         stockOrder.fill(executionQuantity);
         saveTrade(user, stock, stockOrder.getOrderType(), executionQuantity, executionPrice, executedAmount);
         notifyOrderExecuted(stockOrder, executionQuantity, executionPrice, executedAmount);
+        recordExecutionAuditLog(stockOrder, executionQuantity, executionPrice, executedAmount);
 
         return executedAmount;
     }
@@ -98,6 +102,7 @@ public class OrderExecutionService {
         stockOrder.fill(executionQuantity);
         saveTrade(user, stock, stockOrder.getOrderType(), executionQuantity, executionPrice, executedAmount);
         notifyOrderExecuted(stockOrder, executionQuantity, executionPrice, executedAmount);
+        recordExecutionAuditLog(stockOrder, executionQuantity, executionPrice, executedAmount);
 
         return executedAmount;
     }
@@ -146,5 +151,27 @@ public class OrderExecutionService {
         );
 
         stockRealtimeBroadcaster.broadcastOrderExecution(user.getEmail(), notification);
+    }
+
+    // 체결 결과를 복구 추적용 감사 로그로 저장한다.
+    private void recordExecutionAuditLog(
+            StockOrder stockOrder,
+            Integer quantity,
+            Long price,
+            Long totalAmount
+    ) {
+        auditLogService.record(
+                stockOrder.getUser().getEmail(),
+                "ORDER_EXECUTED",
+                "ORDER",
+                stockOrder.getId() == null ? null : String.valueOf(stockOrder.getId()),
+                "주문 체결",
+                "symbol=" + stockOrder.getStock().getSymbol()
+                        + ",orderType=" + stockOrder.getOrderType()
+                        + ",quantity=" + quantity
+                        + ",price=" + price
+                        + ",totalAmount=" + totalAmount
+                        + ",status=" + stockOrder.getStatus()
+        );
     }
 }

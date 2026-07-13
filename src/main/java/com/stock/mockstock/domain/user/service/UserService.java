@@ -11,6 +11,7 @@ import com.stock.mockstock.domain.user.entity.UserPasswordHistory;
 import com.stock.mockstock.domain.user.enumtype.Role;
 import com.stock.mockstock.domain.user.repository.UserPasswordHistoryRepository;
 import com.stock.mockstock.domain.user.repository.UserRepository;
+import com.stock.mockstock.global.audit.AuditLogService;
 import com.stock.mockstock.global.security.jwt.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,6 +29,7 @@ public class UserService {
     private final UserPasswordHistoryRepository userPasswordHistoryRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final AuditLogService auditLogService;
 
     // 신규 회원을 생성하고 초기 비밀번호도 재사용 방지 이력에 저장한다.
     public void signup(SignupRequest request) {
@@ -87,6 +89,14 @@ public class UserService {
         }
 
         user.updateNickname(nickname);
+        auditLogService.record(
+                email,
+                "NICKNAME_UPDATED",
+                "USER",
+                user.getId() == null ? null : String.valueOf(user.getId()),
+                "사용자 닉네임 변경",
+                "nickname=" + nickname
+        );
 
         return UserInfoResponse.from(user);
     }
@@ -112,6 +122,14 @@ public class UserService {
         String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
         user.updatePassword(encodedNewPassword);
         savePasswordHistory(user, encodedNewPassword);
+        auditLogService.record(
+                email,
+                "PASSWORD_UPDATED",
+                "USER",
+                user.getId() == null ? null : String.valueOf(user.getId()),
+                "사용자 비밀번호 변경",
+                null
+        );
     }
 
     // email을 기준으로 사용자를 조회한다.

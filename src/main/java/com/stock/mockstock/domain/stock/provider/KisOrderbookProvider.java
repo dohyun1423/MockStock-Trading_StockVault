@@ -1,3 +1,4 @@
+// KIS 호가 API에서 실제 매도/매수 호가 데이터를 조회하는 provider다.
 package com.stock.mockstock.domain.stock.provider;
 
 import com.stock.mockstock.domain.stock.dto.OrderbookLevelResponse;
@@ -99,6 +100,7 @@ public class KisOrderbookProvider implements OrderbookProvider {
         );
     }
 
+    // KIS 호가 응답이 정상 구조와 성공 코드를 가지고 있는지 검증한다.
     private void validateResponse(KisOrderbookResponse response) {
         if (response == null || response.getOutput1() == null || response.getOutput2() == null) {
             throw new IllegalStateException("KIS orderbook response is empty.");
@@ -109,6 +111,7 @@ public class KisOrderbookProvider implements OrderbookProvider {
         }
     }
 
+    // 종목코드를 KIS 요청에 사용할 수 있는 형식으로 정규화한다.
     private String normalizeSymbol(String symbol) {
         return String.valueOf(symbol)
                 .trim()
@@ -116,6 +119,7 @@ public class KisOrderbookProvider implements OrderbookProvider {
                 .toUpperCase();
     }
 
+    // KIS 문자열 숫자 값을 long 타입으로 변환한다.
     private Long parseLong(String value) {
         if (value == null || value.isBlank()) {
             return 0L;
@@ -124,6 +128,7 @@ public class KisOrderbookProvider implements OrderbookProvider {
         return Long.parseLong(value.replaceAll("[^0-9-]", ""));
     }
 
+    // 기준가 대비 호가 등락률을 계산한다.
     private double calculateRate(long price, long basePrice) {
         if (basePrice == 0L || price == 0L) {
             return 0.0;
