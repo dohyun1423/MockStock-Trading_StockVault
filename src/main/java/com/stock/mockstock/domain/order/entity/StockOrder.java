@@ -23,6 +23,12 @@ public class StockOrder extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // 자동체결, 주문수정, 주문취소가 동시에 같은 주문을 바꾸는 상황을 감지한다.
+    @Builder.Default
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
+
     // 주문을 넣은 사용자다.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

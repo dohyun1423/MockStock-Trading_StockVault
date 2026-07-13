@@ -17,6 +17,12 @@ public class User extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // 동시에 같은 사용자의 현금이 변경될 때 충돌을 감지한다.
+    @Builder.Default
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
+
     @Column(nullable = false, unique = true)
     private String email;
 
@@ -41,6 +47,16 @@ public class User extends BaseTimeEntity {
     // 매도 체결 또는 주문 취소 환급으로 현금을 증가시킨다.
     public void increaseCash(Long amount) {
         this.cash += amount;
+    }
+
+    // 사용자의 닉네임을 새 값으로 변경한다.
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
+    // 사용자의 암호화된 비밀번호를 새 값으로 변경한다.
+    public void updatePassword(String password) {
+        this.password = password;
     }
 
     // 전체 현금 중 미체결 주문에 묶이지 않은 주문 가능 현금을 계산한다.

@@ -51,7 +51,7 @@ class OrderMatchingServiceTest {
         StockOrder stockOrder = createStockOrder(OrderType.BUY, 70_000L, 3);
         KisRealtimeTradeMessage tradeMessage = createTradeMessage("005930", 69_500L);
 
-        when(stockOrderRepository.findAllByStockSymbolAndStatusInOrderByCreatedAtAsc(
+        when(stockOrderRepository.findAllByStockSymbolAndStatusInOrderByCreatedAtAscForUpdate(
                 "005930",
                 List.of(StockOrderStatus.PENDING, StockOrderStatus.PARTIALLY_FILLED)
         )).thenReturn(List.of(stockOrder));
@@ -71,7 +71,7 @@ class OrderMatchingServiceTest {
         StockOrder stockOrder = createStockOrder(OrderType.BUY, 70_000L, 3);
         KisRealtimeTradeMessage tradeMessage = createTradeMessage("005930", 71_000L);
 
-        when(stockOrderRepository.findAllByStockSymbolAndStatusInOrderByCreatedAtAsc(
+        when(stockOrderRepository.findAllByStockSymbolAndStatusInOrderByCreatedAtAscForUpdate(
                 "005930",
                 List.of(StockOrderStatus.PENDING, StockOrderStatus.PARTIALLY_FILLED)
         )).thenReturn(List.of(stockOrder));
@@ -90,12 +90,12 @@ class OrderMatchingServiceTest {
         StockOrder stockOrder = createStockOrder(OrderType.BUY, 70_000L, 5);
         KisRealtimeOrderbookMessage orderbookMessage = createOrderbookMessage(69_900L, 2L, 69_800L, 10L);
 
-        when(stockOrderRepository.findAllByStockSymbolAndOrderTypeAndStatusInOrderByOrderPriceDescCreatedAtAsc(
+        when(stockOrderRepository.findBuyOrdersForMatching(
                 "005930",
                 OrderType.BUY,
                 List.of(StockOrderStatus.PENDING, StockOrderStatus.PARTIALLY_FILLED)
         )).thenReturn(List.of(stockOrder));
-        when(stockOrderRepository.findAllByStockSymbolAndOrderTypeAndStatusInOrderByOrderPriceAscCreatedAtAsc(
+        when(stockOrderRepository.findSellOrdersForMatching(
                 "005930",
                 OrderType.SELL,
                 List.of(StockOrderStatus.PENDING, StockOrderStatus.PARTIALLY_FILLED)
@@ -116,12 +116,12 @@ class OrderMatchingServiceTest {
         StockOrder stockOrder = createStockOrder(OrderType.SELL, 70_000L, 6);
         KisRealtimeOrderbookMessage orderbookMessage = createOrderbookMessage(70_100L, 10L, 70_000L, 4L);
 
-        when(stockOrderRepository.findAllByStockSymbolAndOrderTypeAndStatusInOrderByOrderPriceDescCreatedAtAsc(
+        when(stockOrderRepository.findBuyOrdersForMatching(
                 "005930",
                 OrderType.BUY,
                 List.of(StockOrderStatus.PENDING, StockOrderStatus.PARTIALLY_FILLED)
         )).thenReturn(List.of());
-        when(stockOrderRepository.findAllByStockSymbolAndOrderTypeAndStatusInOrderByOrderPriceAscCreatedAtAsc(
+        when(stockOrderRepository.findSellOrdersForMatching(
                 "005930",
                 OrderType.SELL,
                 List.of(StockOrderStatus.PENDING, StockOrderStatus.PARTIALLY_FILLED)
@@ -141,7 +141,7 @@ class OrderMatchingServiceTest {
         // given: 서버 시작 시 조회할 미체결 매수 주문과 현재가를 준비한다.
         StockOrder stockOrder = createStockOrder(OrderType.BUY, 70_000L, 3);
 
-        when(stockOrderRepository.findAllByStatusIn(anyCollection())).thenReturn(List.of(stockOrder));
+        when(stockOrderRepository.findAllByStatusInForUpdate(anyCollection())).thenReturn(List.of(stockOrder));
         when(stockQuoteService.getQuote("005930")).thenReturn(createQuote(69_500L));
         when(orderExecutionService.executeStockOrder(stockOrder, 69_500L, 3)).thenReturn(208_500L);
 

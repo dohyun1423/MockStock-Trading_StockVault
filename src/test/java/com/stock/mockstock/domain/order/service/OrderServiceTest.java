@@ -100,16 +100,18 @@ class OrderServiceTest {
         OrderRequest request = createOrderRequest("005930", 3, 70_000L);
 
         mockDefaultOrderDependencies(user, stock, MarketSession.REGULAR, 69_000L);
-        when(orderExecutionService.executeStockOrder(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(69_000L), org.mockito.ArgumentMatchers.eq(3)))
-                .thenReturn(207_000L);
-
         // when: 매수 주문을 접수한다.
         OrderResponse response = orderService.buy(user.getEmail(), request);
 
         // then: 즉시 체결 응답을 반환하고 미체결 실시간 구독은 등록하지 않는다.
-        assertThat(response.getOrderStatus()).isEqualTo("EXECUTED");
-        verify(orderExecutionService).executeStockOrder(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(69_000L), org.mockito.ArgumentMatchers.eq(3));
-        verify(openOrderRealtimeSubscriptionService, never()).subscribeTradeAfterCommit("005930");
+        assertThat(response.getOrderStatus()).isEqualTo("PENDING");
+        assertThat(user.getReservedCash()).isEqualTo(210_000L);
+        verify(orderExecutionService, never()).executeStockOrder(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        );
+        verify(openOrderRealtimeSubscriptionService).subscribeTradeAfterCommit("005930");
     }
 
     @Test
@@ -122,7 +124,7 @@ class OrderServiceTest {
         OrderRequest request = createOrderRequest("005930", 4, 72_000L);
 
         mockDefaultOrderDependencies(user, stock, MarketSession.REGULAR, 70_000L);
-        when(holdingRepository.findByUserAndStock(user, stock)).thenReturn(Optional.of(holding));
+        when(holdingRepository.findByUserAndStockForUpdate(user, stock)).thenReturn(Optional.of(holding));
 
         // when: 매도 주문을 접수한다.
         OrderResponse response = orderService.sell(user.getEmail(), request);
@@ -147,8 +149,8 @@ class OrderServiceTest {
         StockOrder stockOrder = createStockOrder(user, stock, OrderType.BUY, 70_000L, 3);
         user.reserveCash(stockOrder.getReservedAmount());
 
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        when(stockOrderRepository.findById(10L)).thenReturn(Optional.of(stockOrder));
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
+        when(stockOrderRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(stockOrder));
 
         // when: 주문을 취소한다.
         StockOrderResponse response = orderService.cancelOrder(user.getEmail(), 10L);
@@ -169,8 +171,8 @@ class OrderServiceTest {
         StockOrderUpdateRequest request = createUpdateRequest(80_000L, 3);
         user.reserveCash(stockOrder.getReservedAmount());
 
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        when(stockOrderRepository.findById(10L)).thenReturn(Optional.of(stockOrder));
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
+        when(stockOrderRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(stockOrder));
 
         // when: 주문가를 80,000원으로 수정한다.
         StockOrderResponse response = orderService.updateOrder(user.getEmail(), 10L, request);
@@ -193,9 +195,9 @@ class OrderServiceTest {
         StockOrder stockOrder = createStockOrder(user, stock, OrderType.SELL, 70_000L, 5);
         StockOrderUpdateRequest request = createUpdateRequest(71_000L, 2);
 
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        when(stockOrderRepository.findById(10L)).thenReturn(Optional.of(stockOrder));
-        when(holdingRepository.findByUserAndStock(user, stock)).thenReturn(Optional.of(holding));
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
+        when(stockOrderRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(stockOrder));
+        when(holdingRepository.findByUserAndStockForUpdate(user, stock)).thenReturn(Optional.of(holding));
 
         // when: 매도 주문의 남은 수량을 2주로 수정한다.
         StockOrderResponse response = orderService.updateOrder(user.getEmail(), 10L, request);
@@ -215,11 +217,10 @@ class OrderServiceTest {
             MarketSession session,
             Long currentPrice
     ) {
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailForUpdate(user.getEmail())).thenReturn(Optional.of(user));
         when(stockRepository.findBySymbol("005930")).thenReturn(Optional.of(stock));
         when(marketSessionService.getCurrentSession()).thenReturn(session);
         when(marketSessionService.isOrderAvailable(session)).thenReturn(true);
-        when(marketSessionService.isImmediateExecution(session)).thenReturn(session == MarketSession.REGULAR);
         when(stockQuoteService.getQuote("005930")).thenReturn(createQuote(currentPrice));
     }
 

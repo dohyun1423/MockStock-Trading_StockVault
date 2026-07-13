@@ -26,6 +26,12 @@ public class Holding extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // 동시에 같은 보유 종목 수량이 변경될 때 충돌을 감지한다.
+    @Builder.Default
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
+
     // 보유 주식의 사용자다.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

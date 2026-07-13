@@ -11,12 +11,11 @@ import org.springframework.stereotype.Component;
 public class OpenOrderRealtimeSubscriptionInitializer {
 
     private final OpenOrderRealtimeSubscriptionService openOrderRealtimeSubscriptionService;
-    private final OrderMatchingService orderMatchingService;
 
-    // 서버가 완전히 뜬 뒤 기존 미체결 주문을 현재가로 먼저 검사하고 남은 주문 종목을 실시간 구독한다.
+    // 서버가 완전히 뜬 뒤 기존 미체결 주문 종목을 실시간 구독한다.
+    // 시작 시 현재가만 보고 전량 체결하지 않도록 체결은 이후 KIS 실시간 이벤트에서만 수행한다.
     @EventListener(ApplicationReadyEvent.class)
     public void initializeOpenOrderSubscriptions() {
-        orderMatchingService.matchOpenOrdersByCurrentQuotes();
         openOrderRealtimeSubscriptionService.subscribeOpenOrderSymbols();
     }
 }

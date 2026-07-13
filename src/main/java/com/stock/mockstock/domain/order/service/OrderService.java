@@ -39,7 +39,6 @@ public class OrderService {
     private final HoldingRepository holdingRepository;
     private final StockQuoteService stockQuoteService;
     private final MarketSessionService marketSessionService;
-    private final OrderExecutionService orderExecutionService;
     private final OpenOrderRealtimeSubscriptionService openOrderRealtimeSubscriptionService;
 
     // 매수 주문을 접수한다.
@@ -65,8 +64,8 @@ public class OrderService {
 
     // 사용자가 직접 미체결/부분체결 주문을 취소하고 묶여 있던 현금 또는 수량을 해제한다.
     public StockOrderResponse cancelOrder(String email, Long orderId) {
-        User user = getUser(email);
-        StockOrder stockOrder = getMyCancelableOrder(user, orderId);
+        User user = getUserForUpdate(email);
+        StockOrder stockOrder = getMyCancelableOrderForUpdate(user, orderId);
 
         releaseReservation(user, stockOrder);
         stockOrder.cancel();
@@ -82,8 +81,8 @@ public class OrderService {
     ) {
         validateOrderUpdateRequest(request);
 
-        User user = getUser(email);
-        StockOrder stockOrder = getMyCancelableOrder(user, orderId);
+        User user = getUserForUpdate(email);
+        StockOrder stockOrder = getMyCancelableOrderForUpdate(user, orderId);
 
         if (stockOrder.getOrderType() == OrderType.BUY) {
             updateBuyOrder(user, stockOrder, request);
@@ -104,7 +103,7 @@ public class OrderService {
     ) {
         validateOrderRequest(request);
 
-        User user = getUser(email);
+        User user = getUserForUpdate(email);
         Stock stock = getStockBySymbol(request.getSymbol());
         MarketSession session = marketSessionService.getCurrentSession();
 
@@ -128,34 +127,19 @@ public class OrderService {
         reserveOrder(user, stock, stockOrder);
         stockOrderRepository.save(stockOrder);
 
-        boolean executed = false;
-        Long executedAmount = 0L;
-
-        if (marketSessionService.isImmediateExecution(session)
-                && stockOrder.isExecutableByPrice(currentPrice)) {
-            executedAmount = orderExecutionService.executeStockOrder(
-                    stockOrder,
-                    currentPrice,
-                    stockOrder.getRemainingQuantity()
-            );
-            executed = true;
-        }
-
-        if (!executed) {
-            openOrderRealtimeSubscriptionService.subscribeTradeAfterCommit(stock.getSymbol());
-        }
+        openOrderRealtimeSubscriptionService.subscribeTradeAfterCommit(stock.getSymbol());
 
         return new OrderResponse(
                 stock.getName(),
                 orderType,
                 quantity,
                 orderPrice,
-                executed ? executedAmount : orderPrice * quantity,
+                orderPrice * quantity,
                 user.getCash(),
-                executed ? "EXECUTED" : "PENDING",
+                "PENDING",
                 session,
                 stockOrder.getId(),
-                executed ? "주문이 체결되었습니다." : "미체결 주문으로 접수되었습니다."
+                "미체결 주문으로 접수되었습니다."
         );
     }
 
@@ -170,7 +154,7 @@ public class OrderService {
             return;
         }
 
-        Holding holding = holdingRepository.findByUserAndStock(user, stock)
+        Holding holding = holdingRepository.findByUserAndStockForUpdate(user, stock)
                 .orElseThrow(() -> new IllegalArgumentException("보유 중인 종목이 아닙니다."));
 
         holding.reserveQuantity(stockOrder.getReservedQuantity());
@@ -183,7 +167,7 @@ public class OrderService {
             return;
         }
 
-        Holding holding = holdingRepository.findByUserAndStock(user, stockOrder.getStock())
+        Holding holding = holdingRepository.findByUserAndStockForUpdate(user, stockOrder.getStock())
                 .orElseThrow(() -> new IllegalArgumentException("보유 종목 정보를 찾을 수 없습니다."));
 
         holding.releaseReservedQuantity(stockOrder.getRemainingReservedQuantity());
@@ -212,7 +196,7 @@ public class OrderService {
             StockOrder stockOrder,
             StockOrderUpdateRequest request
     ) {
-        Holding holding = holdingRepository.findByUserAndStock(stockOrder.getUser(), stockOrder.getStock())
+        Holding holding = holdingRepository.findByUserAndStockForUpdate(stockOrder.getUser(), stockOrder.getStock())
                 .orElseThrow(() -> new IllegalArgumentException("보유 종목 정보를 찾을 수 없습니다."));
 
         Integer oldReservedQuantity = stockOrder.getRemainingReservedQuantity();
@@ -285,9 +269,15 @@ public class OrderService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
     }
 
-    // 로그인 사용자의 취소/수정 가능한 주문인지 확인하고 조회한다.
-    private StockOrder getMyCancelableOrder(User user, Long orderId) {
-        StockOrder stockOrder = stockOrderRepository.findById(orderId)
+    // 현금 변경이 필요한 주문 흐름에서는 사용자 정보를 쓰기 락으로 조회한다.
+    private User getUserForUpdate(String email) {
+        return userRepository.findByEmailForUpdate(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
+    }
+
+    // 로그인 사용자의 취소/수정 가능한 주문인지 확인하고 쓰기 락으로 조회한다.
+    private StockOrder getMyCancelableOrderForUpdate(User user, Long orderId) {
+        StockOrder stockOrder = stockOrderRepository.findByIdForUpdate(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 주문입니다."));
 
         if (!stockOrder.getUser().getId().equals(user.getId())) {

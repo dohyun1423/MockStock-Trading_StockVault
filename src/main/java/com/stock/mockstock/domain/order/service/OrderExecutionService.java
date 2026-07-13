@@ -56,7 +56,7 @@ public class OrderExecutionService {
 
         user.executeReservedBuy(reservedAmount, executedAmount);
 
-        Holding holding = holdingRepository.findByUserAndStock(user, stock)
+        Holding holding = holdingRepository.findByUserAndStockForUpdate(user, stock)
                 .orElseGet(() -> Holding.builder()
                         .user(user)
                         .stock(stock)
@@ -85,7 +85,7 @@ public class OrderExecutionService {
         Stock stock = stockOrder.getStock();
         Long executedAmount = calculateTotalAmount(executionPrice, executionQuantity);
 
-        Holding holding = holdingRepository.findByUserAndStock(user, stock)
+        Holding holding = holdingRepository.findByUserAndStockForUpdate(user, stock)
                 .orElseThrow(() -> new IllegalArgumentException("보유 중인 종목이 아닙니다."));
 
         holding.executeReservedSell(executionQuantity);

@@ -47,7 +47,7 @@ public class OrderMatchingService {
             return;
         }
 
-        List<StockOrder> stockOrders = stockOrderRepository.findAllByStockSymbolAndStatusInOrderByCreatedAtAsc(
+        List<StockOrder> stockOrders = stockOrderRepository.findAllByStockSymbolAndStatusInOrderByCreatedAtAscForUpdate(
                 normalizeSymbol(tradeMessage.getSymbol()),
                 MATCHABLE_STATUSES
         );
@@ -75,7 +75,7 @@ public class OrderMatchingService {
     // 서버 시작 또는 복구 시점에 현재가를 한 번 조회해서 이미 조건을 만족한 미체결 주문을 체결한다.
     @Transactional
     public void matchOpenOrdersByCurrentQuotes() {
-        List<StockOrder> stockOrders = stockOrderRepository.findAllByStatusIn(MATCHABLE_STATUSES);
+        List<StockOrder> stockOrders = stockOrderRepository.findAllByStatusInForUpdate(MATCHABLE_STATUSES);
         Map<String, Long> currentPricesBySymbol = new HashMap<>();
 
         for (StockOrder stockOrder : stockOrders) {
@@ -129,7 +129,7 @@ public class OrderMatchingService {
         }
 
         List<StockOrder> buyOrders = stockOrderRepository
-                .findAllByStockSymbolAndOrderTypeAndStatusInOrderByOrderPriceDescCreatedAtAsc(
+                .findBuyOrdersForMatching(
                         symbol,
                         OrderType.BUY,
                         MATCHABLE_STATUSES
@@ -147,7 +147,7 @@ public class OrderMatchingService {
         }
 
         List<StockOrder> sellOrders = stockOrderRepository
-                .findAllByStockSymbolAndOrderTypeAndStatusInOrderByOrderPriceAscCreatedAtAsc(
+                .findSellOrdersForMatching(
                         symbol,
                         OrderType.SELL,
                         MATCHABLE_STATUSES

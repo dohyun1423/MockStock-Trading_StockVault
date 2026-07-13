@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import com.stock.mockstock.global.security.jwt.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 
 @RequiredArgsConstructor
 @Configuration
@@ -38,6 +39,8 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
+                        // 관리자 API는 ADMIN 권한을 가진 사용자만 접근할 수 있다.
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(
                                 "/",
                                 "/api/users/signup",
@@ -48,9 +51,22 @@ public class SecurityConfig {
                                 "/stocks/detail",
                                 "/portfolio",
                                 "/ws/stocks",
-                                "/ws/stocks/**"
+                                "/ws/stocks/**",
+                                "/ws/orders",
+                                "/ws/orders/**"
                         ).permitAll()
                         .anyRequest().authenticated()
+                )
+
+                .exceptionHandling(exception -> exception
+                        // 인증 자체가 없거나 만료된 경우에는 프론트가 명확히 재로그인 처리할 수 있도록 401을 반환한다.
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED)
+                        )
+                        // 인증은 되었지만 접근할 수 없는 요청은 토큰 삭제 대상이 아니므로 403으로만 반환한다.
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                response.sendError(HttpServletResponse.SC_FORBIDDEN)
+                        )
                 )
 
                 .addFilterBefore(

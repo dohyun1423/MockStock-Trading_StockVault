@@ -359,11 +359,70 @@
     cursor: not-allowed;
 }
 
+.my-info-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.my-info-form label {
+    min-width: 0;
+}
+
+.my-info-form label span {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+}
+
+.my-info-form input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    outline: none;
+}
+
+.my-info-form input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.my-info-form button {
+    height: 40px;
+    min-width: 68px;
+    padding: 0 14px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--bg);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.my-info-form button:hover {
+    background: transparent;
+    color: var(--accent);
+}
+
 .my-info-message {
     margin-top: 12px;
     color: var(--muted);
     font-size: 12px;
     line-height: 1.6;
+}
+
+.my-info-message.error {
+    color: #ff6b7a;
 }
 
 .session-control {

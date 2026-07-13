@@ -3,6 +3,7 @@ package com.stock.mockstock.global.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stock.mockstock.domain.stock.realtime.KisRealtimeWebSocketClient;
+import com.stock.mockstock.domain.stock.realtime.OrderNotificationWebSocketHandler;
 import com.stock.mockstock.domain.stock.realtime.StockRealtimeSessionRegistry;
 import com.stock.mockstock.domain.stock.realtime.StockRealtimeWebSocketHandler;
 import com.stock.mockstock.global.security.jwt.JwtUtil;
@@ -33,6 +34,16 @@ public class WebSocketConfig implements WebSocketConfigurer {
                                 kisRealtimeWebSocketClient
                         ),
                         "/ws/stocks"
+                )
+                .setAllowedOriginPatterns("*");
+
+        registry.addHandler(
+                        new OrderNotificationWebSocketHandler(
+                                objectMapper,
+                                jwtUtil,
+                                sessionRegistry
+                        ),
+                        "/ws/orders"
                 )
                 .setAllowedOriginPatterns("*");
     }

@@ -71,7 +71,7 @@ function redirectToLogin() {
 }
 
 function isAuthError(response) {
-    return response && (response.status === 401 || response.status === 403);
+    return response && response.status === 401;
 }
 
 // 보호 API 요청 전에 인증 확인, Authorization 헤더 추가, 인증 실패 처리를 공통으로 수행한다.
@@ -226,7 +226,7 @@ function connectOrderNotificationSocket() {
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    orderNotificationSocket = new WebSocket(`${protocol}://${window.location.host}/ws/stocks`);
+    orderNotificationSocket = new WebSocket(`${protocol}://${window.location.host}/ws/orders`);
 
     orderNotificationSocket.onopen = () => {
         orderNotificationSocket.send(JSON.stringify({
@@ -363,6 +363,9 @@ function bindMyInfoModal() {
             }
         });
     }
+
+    bindNicknameUpdateForm();
+    bindPasswordUpdateForm();
 }
 
 function showMyInfo() {
@@ -374,6 +377,10 @@ function showMyInfo() {
 
     setHeaderText('my-info-email', currentUserInfo.email || '-');
     setHeaderText('my-info-nickname', currentUserInfo.nickname || '-');
+    setInputValue('my-info-nickname-input', currentUserInfo.nickname || '');
+    setInputValue('my-info-current-password', '');
+    setInputValue('my-info-new-password', '');
+    setMyInfoMessage('');
 
     overlay.classList.add('active');
 }
@@ -383,6 +390,137 @@ function closeMyInfoModal() {
 
     if (overlay) {
         overlay.classList.remove('active');
+    }
+}
+
+// 내정보 모달의 닉네임 변경 폼 submit 이벤트를 연결한다.
+function bindNicknameUpdateForm() {
+    const form = document.getElementById('nickname-update-form');
+
+    if (!form) {
+        return;
+    }
+
+    form.addEventListener('submit', handleNicknameUpdate);
+}
+
+// 내정보 모달의 비밀번호 변경 폼 submit 이벤트를 연결한다.
+function bindPasswordUpdateForm() {
+    const form = document.getElementById('password-update-form');
+
+    if (!form) {
+        return;
+    }
+
+    form.addEventListener('submit', handlePasswordUpdate);
+}
+
+// 닉네임 변경 API를 호출하고 성공 시 화면의 사용자 닉네임을 갱신한다.
+async function handleNicknameUpdate(event) {
+    event.preventDefault();
+
+    const input = document.getElementById('my-info-nickname-input');
+    const nickname = input?.value?.trim();
+
+    if (!nickname || nickname.length < 2) {
+        setMyInfoMessage('닉네임은 2자 이상 입력해 주세요.', true);
+        return;
+    }
+
+    const response = await authFetch('/api/users/me/nickname', {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ nickname })
+    });
+
+    if (!response) {
+        return;
+    }
+
+    if (!response.ok) {
+        setMyInfoMessage(await readErrorMessage(response, '닉네임 변경에 실패했습니다.'), true);
+        return;
+    }
+
+    currentUserInfo = await response.json();
+    setHeaderText('user-nickname', currentUserInfo.nickname || currentUserInfo.email || 'USER');
+    setHeaderText('my-info-nickname', currentUserInfo.nickname || '-');
+    setInputValue('my-info-nickname-input', currentUserInfo.nickname || '');
+    setMyInfoMessage('닉네임이 변경되었습니다.');
+}
+
+// 비밀번호 변경 API를 호출하고 성공 시 입력값을 비운다.
+async function handlePasswordUpdate(event) {
+    event.preventDefault();
+
+    const currentPassword = document.getElementById('my-info-current-password')?.value || '';
+    const newPassword = document.getElementById('my-info-new-password')?.value || '';
+
+    if (!currentPassword) {
+        setMyInfoMessage('현재 비밀번호를 입력해 주세요.', true);
+        return;
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+        setMyInfoMessage('새 비밀번호는 8자 이상 입력해 주세요.', true);
+        return;
+    }
+
+    const response = await authFetch('/api/users/me/password', {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            currentPassword,
+            newPassword
+        })
+    });
+
+    if (!response) {
+        return;
+    }
+
+    if (!response.ok) {
+        setMyInfoMessage(await readErrorMessage(response, '비밀번호 변경에 실패했습니다.'), true);
+        return;
+    }
+
+    setInputValue('my-info-current-password', '');
+    setInputValue('my-info-new-password', '');
+    setMyInfoMessage('비밀번호가 변경되었습니다.');
+}
+
+// 공통 에러 응답에서 사용자에게 보여줄 메시지를 추출한다.
+async function readErrorMessage(response, fallbackMessage) {
+    try {
+        const data = await response.json();
+        return data.message || fallbackMessage;
+    } catch (error) {
+        return fallbackMessage;
+    }
+}
+
+// 내정보 모달 메시지를 성공/실패 상태에 맞춰 표시한다.
+function setMyInfoMessage(message, isError = false) {
+    const element = document.getElementById('my-info-message');
+
+    if (!element) {
+        return;
+    }
+
+    element.textContent = message || '';
+    element.classList.toggle('error', Boolean(isError));
+}
+
+// input 값을 안전하게 변경한다.
+function setInputValue(id, value) {
+    const element = document.getElementById(id);
+
+    if (element) {
+        element.value = value;
     }
 }
 

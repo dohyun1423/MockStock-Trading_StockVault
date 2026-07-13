@@ -60,7 +60,7 @@ class OrderExecutionServiceTest {
         );
         user.reserveCash(stockOrder.getReservedAmount());
 
-        when(holdingRepository.findByUserAndStock(user, stock)).thenReturn(Optional.empty());
+        when(holdingRepository.findByUserAndStockForUpdate(user, stock)).thenReturn(Optional.empty());
 
         // when: 69,000원에 2주만 부분 체결한다.
         Long executedAmount = orderExecutionService.executeStockOrder(stockOrder, 69_000L, 2);
@@ -110,7 +110,7 @@ class OrderExecutionServiceTest {
                 MarketSession.REGULAR
         );
 
-        when(holdingRepository.findByUserAndStock(user, stock)).thenReturn(Optional.of(holding));
+        when(holdingRepository.findByUserAndStockForUpdate(user, stock)).thenReturn(Optional.of(holding));
 
         // when: 72,000원에 3주가 전량 체결된다.
         Long executedAmount = orderExecutionService.executeStockOrder(stockOrder, 72_000L, 3);
@@ -154,7 +154,7 @@ class OrderExecutionServiceTest {
                 MarketSession.REGULAR
         );
 
-        when(holdingRepository.findByUserAndStock(user, stock)).thenReturn(Optional.of(holding));
+        when(holdingRepository.findByUserAndStockForUpdate(user, stock)).thenReturn(Optional.of(holding));
 
         // when: 예약 매도 수량 전체가 체결된다.
         orderExecutionService.executeStockOrder(stockOrder, 72_000L, 3);
