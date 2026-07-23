@@ -378,6 +378,7 @@ function bindMyInfoModal() {
 
     bindNicknameUpdateForm();
     bindPasswordUpdateForm();
+    bindMyInfoPasswordToggles();
 }
 
 // 현재 사용자 정보를 내정보 모달에 채우고 모달을 연다.
@@ -393,6 +394,7 @@ function showMyInfo() {
     setInputValue('my-info-nickname-input', currentUserInfo.nickname || '');
     setInputValue('my-info-current-password', '');
     setInputValue('my-info-new-password', '');
+    resetMyInfoPasswordVisibility();
     setMyInfoMessage('');
 
     overlay.classList.add('active');
@@ -427,6 +429,40 @@ function bindPasswordUpdateForm() {
     }
 
     form.addEventListener('submit', handlePasswordUpdate);
+}
+
+// 내정보 모달의 비밀번호 표시 버튼을 각 입력칸과 연결한다.
+function bindMyInfoPasswordToggles() {
+    const buttons = document.querySelectorAll('.my-info-password-toggle');
+
+    buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const input = document.getElementById(button.dataset.passwordTarget);
+
+            if (!input) {
+                return;
+            }
+
+            const shouldShow = input.type === 'password';
+            input.type = shouldShow ? 'text' : 'password';
+            button.classList.toggle('active', shouldShow);
+            button.setAttribute('aria-label', shouldShow ? '비밀번호 숨기기' : '비밀번호 표시');
+        });
+    });
+}
+
+// 내정보 모달을 열 때 비밀번호 입력칸을 다시 숨김 상태로 되돌린다.
+function resetMyInfoPasswordVisibility() {
+    document.querySelectorAll('.my-info-password-toggle').forEach((button) => {
+        const input = document.getElementById(button.dataset.passwordTarget);
+
+        if (input) {
+            input.type = 'password';
+        }
+
+        button.classList.remove('active');
+        button.setAttribute('aria-label', '비밀번호 표시');
+    });
 }
 
 // 닉네임 변경 API를 호출하고 성공 시 화면의 사용자 닉네임을 갱신한다.
@@ -465,7 +501,7 @@ async function handleNicknameUpdate(event) {
     setMyInfoMessage('닉네임이 변경되었습니다.');
 }
 
-// 비밀번호 변경 API를 호출하고 성공 시 입력값을 비운다.
+// 비밀번호 변경 API를 호출하고 기존 JWT가 무효화되면 로그인 화면으로 이동한다.
 async function handlePasswordUpdate(event) {
     event.preventDefault();
 
@@ -504,7 +540,12 @@ async function handlePasswordUpdate(event) {
 
     setInputValue('my-info-current-password', '');
     setInputValue('my-info-new-password', '');
-    setMyInfoMessage('비밀번호가 변경되었습니다.');
+    setMyInfoMessage('비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인해 주세요.');
+    localStorage.removeItem('accessToken');
+
+    window.setTimeout(() => {
+        window.location.replace('/login');
+    }, 1200);
 }
 
 // 공통 에러 응답에서 사용자에게 보여줄 메시지를 추출한다.

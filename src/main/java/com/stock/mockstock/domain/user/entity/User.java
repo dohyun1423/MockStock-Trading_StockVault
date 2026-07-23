@@ -19,16 +19,20 @@ public class User extends BaseTimeEntity {
     private Long id;
 
     // 동시에 같은 사용자의 현금이 변경될 때 충돌을 감지한다.
-    @Builder.Default
     @Version
     @Column(nullable = false)
-    private Long version = 0L;
+    private Long version;
 
     @Column(nullable = false, unique = true)
     private String email;
 
     @Column(nullable = false)
     private String password;
+
+    // 비밀번호 변경 전에 발급된 JWT를 즉시 무효화하는 인증 버전이다.
+    @Builder.Default
+    @Column(nullable = false)
+    private Long tokenVersion = 0L;
 
     @Column(nullable = false, unique = true)
     private String nickname;
@@ -58,6 +62,11 @@ public class User extends BaseTimeEntity {
     // 사용자의 암호화된 비밀번호를 새 값으로 변경한다.
     public void updatePassword(String password) {
         this.password = password;
+    }
+
+    // 비밀번호 변경 시 기존 JWT의 인증 버전과 다르게 만들어 모두 무효화한다.
+    public void increaseTokenVersion() {
+        this.tokenVersion = (this.tokenVersion == null ? 0L : this.tokenVersion) + 1L;
     }
 
     // 전체 현금 중 미체결 주문에 묶이지 않은 주문 가능 현금을 계산한다.

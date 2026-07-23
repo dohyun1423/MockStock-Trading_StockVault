@@ -605,3 +605,115 @@ body {
     .left-panel { display: none; }
     .right-panel { width: 100%; border-left: none; }
 }
+
+/* 비밀번호 찾기와 재설정 화면을 로그인 디자인에 맞춰 한 화면에 배치한다. */
+.password-reset-page {
+    min-height: 100vh;
+    display: block;
+    overflow-y: auto;
+    background:
+            linear-gradient(rgba(0,229,160,0.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,229,160,0.035) 1px, transparent 1px),
+            var(--bg);
+    background-size: 56px 56px;
+}
+
+.reset-layout {
+    width: min(100% - 40px, 520px);
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 56px 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 28px;
+}
+
+.reset-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    align-self: flex-start;
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.reset-panel {
+    padding: 38px 40px;
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent);
+    background: var(--surface);
+}
+
+.reset-title {
+    margin: 0;
+    color: var(--text);
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.reset-description {
+    margin: 12px 0 28px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.reset-field-group {
+    margin-bottom: 0;
+}
+
+/* 비밀번호 재설정 입력값이 표시 중일 때 눈 모양 버튼을 강조한다. */
+.reset-field-group .toggle-pw.active {
+    color: var(--accent);
+}
+
+.reset-submit {
+    margin-top: 24px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.reset-submit:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+}
+
+.reset-message {
+    min-height: 22px;
+    margin-top: 14px;
+    color: var(--accent);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.reset-message.error {
+    color: var(--red);
+}
+
+.reset-back-link {
+    display: inline-block;
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 12px;
+    text-decoration: none;
+}
+
+.reset-back-link:hover {
+    color: var(--accent);
+}
+
+@media (max-width: 560px) {
+    .reset-layout {
+        width: min(100% - 24px, 520px);
+        padding: 24px 0;
+    }
+
+    .reset-panel {
+        padding: 28px 22px;
+    }
+}

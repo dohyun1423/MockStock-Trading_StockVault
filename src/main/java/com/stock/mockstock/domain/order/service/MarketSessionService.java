@@ -88,6 +88,12 @@ public class MarketSessionService {
                 || session == MarketSession.RESERVATION;
     }
 
+    // KIS WebSocket 대신 시간외 REST 폴링을 사용해야 하는 세션인지 확인한다.
+    public boolean isAfterMarketPollingSession(MarketSession session) {
+        return session == MarketSession.AFTER_MARKET_WAIT
+                || session == MarketSession.AFTER_MARKET_CLOSING_PRICE;
+    }
+
     // 거래 세션 코드를 사용자에게 보여줄 이름으로 변환한다.
     public String getDisplayName(MarketSession session) {
         return switch (session) {

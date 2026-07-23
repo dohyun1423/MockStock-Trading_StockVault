@@ -2,6 +2,7 @@
 package com.stock.mockstock.domain.stock.realtime;
 
 import com.stock.mockstock.domain.order.service.OrderMatchingService;
+import com.stock.mockstock.domain.order.enumtype.MarketSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.socket.PongMessage;
@@ -15,9 +16,6 @@ import java.nio.ByteBuffer;
 @RequiredArgsConstructor
 public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
 
-    private static final String REALTIME_TRADE_TR_ID = "H0STCNT0";
-    private static final String REALTIME_ORDERBOOK_TR_ID = "H0STASP0";
-
     private final KisRealtimeTradeMessageParser tradeMessageParser;
     private final KisRealtimeOrderbookMessageParser orderbookMessageParser;
     private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
@@ -27,14 +25,18 @@ public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload();
+        String trId = KisRealtimeTrId.extractTrId(payload);
+        MarketSession marketSession = KisRealtimeTrId.resolveMarketSession(trId);
 
-        if (payload.startsWith("0|" + REALTIME_TRADE_TR_ID + "|")) {
-            KisRealtimeTradeMessage tradeMessage = tradeMessageParser.parse(payload);
+        if (KisRealtimeTrId.isTradeTrId(trId)) {
+            KisRealtimeTradeMessage tradeMessage = tradeMessageParser.parse(payload, marketSession);
             stockRealtimeBroadcaster.broadcastTrade(tradeMessage);
 
             log.info(
-                    "KIS realtime trade parsed. symbol={}, price={}, changeRate={}, volume={}",
+                    "KIS realtime trade parsed. symbol={}, session={}, trId={}, price={}, changeRate={}, volume={}",
                     tradeMessage.getSymbol(),
+                    marketSession,
+                    trId,
                     tradeMessage.getCurrentPrice(),
                     tradeMessage.getChangeRate(),
                     tradeMessage.getAccumulatedVolume()
@@ -42,14 +44,16 @@ public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        if (payload.startsWith("0|" + REALTIME_ORDERBOOK_TR_ID + "|")) {
-            KisRealtimeOrderbookMessage orderbookMessage = orderbookMessageParser.parse(payload);
+        if (KisRealtimeTrId.isOrderbookTrId(trId)) {
+            KisRealtimeOrderbookMessage orderbookMessage = orderbookMessageParser.parse(payload, marketSession);
             stockRealtimeBroadcaster.broadcastOrderbook(orderbookMessage);
             orderMatchingService.matchByRealtimeOrderbook(orderbookMessage);
 
             log.info(
-                    "KIS realtime orderbook parsed. symbol={}, levels={}, totalAsk={}, totalBid={}",
+                    "KIS realtime orderbook parsed. symbol={}, session={}, trId={}, levels={}, totalAsk={}, totalBid={}",
                     orderbookMessage.getSymbol(),
+                    marketSession,
+                    trId,
                     orderbookMessage.getLevels().size(),
                     orderbookMessage.getTotalAskQuantity(),
                     orderbookMessage.getTotalBidQuantity()

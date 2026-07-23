@@ -7,7 +7,6 @@ import com.stock.mockstock.domain.user.dto.SignupRequest;
 import com.stock.mockstock.domain.user.dto.TokenRefreshResponse;
 import com.stock.mockstock.domain.user.dto.UserInfoResponse;
 import com.stock.mockstock.domain.user.service.UserService;
-import com.stock.mockstock.global.security.jwt.JwtUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,9 +24,6 @@ class UserControllerTest {
 
     @Mock
     private UserService userService;
-
-    @Mock
-    private JwtUtil jwtUtil;
 
     @Mock
     private Authentication authentication;
@@ -87,13 +83,13 @@ class UserControllerTest {
     void refresh() {
         // given: 로그인 사용자와 새 토큰을 준비한다.
         when(authentication.getName()).thenReturn("test@example.com");
-        when(jwtUtil.generateToken("test@example.com")).thenReturn("new-access-token");
+        when(userService.refreshToken("test@example.com")).thenReturn("new-access-token");
 
         // when: 토큰 연장 API 메서드를 호출한다.
         TokenRefreshResponse response = userController.refresh(authentication);
 
         // then: 인증 email 기준으로 새 토큰이 발급된다.
         assertThat(response.getToken()).isEqualTo("new-access-token");
-        verify(jwtUtil).generateToken("test@example.com");
+        verify(userService).refreshToken("test@example.com");
     }
 }

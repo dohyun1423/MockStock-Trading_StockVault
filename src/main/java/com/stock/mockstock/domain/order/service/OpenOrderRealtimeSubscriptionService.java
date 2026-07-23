@@ -53,16 +53,22 @@ public class OpenOrderRealtimeSubscriptionService {
     // 서버 시작 시 DB에 이미 남아있는 미체결 주문 종목들을 다시 구독한다.
     @Transactional(readOnly = true)
     public void subscribeOpenOrderSymbols() {
-        Set<String> symbols = stockOrderRepository.findAllByStatusIn(OPEN_ORDER_STATUSES)
+        Set<String> symbols = getOpenOrderSymbols();
+
+        symbols.forEach(this::subscribeTrade);
+
+        log.info("Open order realtime subscriptions restored. count={}, symbols={}", symbols.size(), symbols);
+    }
+
+    // 시간외 폴링과 실시간 구독 복구에 사용할 미체결 주문 종목코드 목록을 반환한다.
+    @Transactional(readOnly = true)
+    public Set<String> getOpenOrderSymbols() {
+        return stockOrderRepository.findAllByStatusIn(OPEN_ORDER_STATUSES)
                 .stream()
                 .map(StockOrder::getStock)
                 .map((stock) -> normalizeSymbol(stock.getSymbol()))
                 .filter((symbol) -> !symbol.isBlank())
                 .collect(Collectors.toSet());
-
-        symbols.forEach(this::subscribeTrade);
-
-        log.info("Open order realtime subscriptions restored. count={}, symbols={}", symbols.size(), symbols);
     }
 
     // KIS 실시간 체결가와 호가 구독을 요청한다.

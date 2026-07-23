@@ -11,9 +11,35 @@ const defaultButtonHtml = `
 `;
 
 document.addEventListener('DOMContentLoaded', () => {
+    initializeRememberedEmail();
+    bindLoginForm();
     redirectIfAlreadyLoggedIn();
-    bindLoginEnterKey();
 });
+
+// 저장된 이메일을 로그인 입력칸에 채우고 체크박스 상태를 복원한다.
+function initializeRememberedEmail() {
+    const rememberedEmail = localStorage.getItem('rememberedEmail');
+    const emailInput = document.getElementById('email');
+    const rememberCheckbox = document.getElementById('remember');
+
+    if (!rememberedEmail || !emailInput || !rememberCheckbox) {
+        return;
+    }
+
+    emailInput.value = rememberedEmail;
+    rememberCheckbox.checked = true;
+}
+
+// 로그인 form 제출 이벤트를 로그인 API 호출 함수에 연결한다.
+function bindLoginForm() {
+    const loginForm = document.getElementById('login-form');
+
+    if (!loginForm) {
+        return;
+    }
+
+    loginForm.addEventListener('submit', handleLogin);
+}
 
 // 이미 로그인한 사용자가 로그인 페이지에 접근하면 메인으로 이동
 async function redirectIfAlreadyLoggedIn() {
@@ -43,25 +69,7 @@ async function redirectIfAlreadyLoggedIn() {
     }
 }
 
-// 이메일 또는 비밀번호 입력 중 Enter를 누르면 로그인 실행
-function bindLoginEnterKey() {
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-
-    [emailInput, passwordInput].forEach((input) => {
-        if (!input) {
-            return;
-        }
-
-        input.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                handleLogin();
-            }
-        });
-    });
-}
-
+// 로그인 실패 메시지를 화면에 표시한다.
 function showLoginError(message) {
     const loginError = document.getElementById('login-error');
 
@@ -73,6 +81,7 @@ function showLoginError(message) {
     loginError.style.display = 'block';
 }
 
+// 이전 로그인 실패 메시지를 화면에서 제거한다.
 function hideLoginError() {
     const loginError = document.getElementById('login-error');
 
@@ -84,6 +93,7 @@ function hideLoginError() {
     loginError.style.display = 'none';
 }
 
+// 로그인 요청 중 버튼의 비활성화와 로딩 표시를 전환한다.
 function setLoading(button, loading) {
     button.disabled = loading;
     button.style.opacity = loading ? '0.7' : '1';
@@ -103,9 +113,13 @@ function setLoading(button, loading) {
     button.innerHTML = defaultButtonHtml;
 }
 
-async function handleLogin() {
+// 입력값을 검증하고 로그인 API를 호출한 뒤 토큰과 기억할 이메일을 저장한다.
+async function handleLogin(event) {
+    event?.preventDefault();
+
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
+    const rememberEmail = document.getElementById('remember')?.checked === true;
     const emailField = document.getElementById('field-email');
     const pwField = document.getElementById('field-password');
     const btn = document.querySelector('.btn-submit');
@@ -151,6 +165,13 @@ async function handleLogin() {
         }
 
         localStorage.setItem('accessToken', data.token);
+
+        if (rememberEmail) {
+            localStorage.setItem('rememberedEmail', email);
+        } else {
+            localStorage.removeItem('rememberedEmail');
+        }
+
         window.location.href = '/main';
     } catch (error) {
         console.error(error);

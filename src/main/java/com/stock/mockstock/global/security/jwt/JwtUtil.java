@@ -15,6 +15,7 @@ import java.util.Date;
 public class JwtUtil {
 
     private static final long ACCESS_TOKEN_EXPIRATION_TIME = 60 * 60 * 1000L;
+    private static final String TOKEN_VERSION_CLAIM = "tokenVersion";
 
     @Value("${jwt.secret}")
     private String secretKey;
@@ -27,13 +28,14 @@ public class JwtUtil {
         key = Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
-    // 이메일을 subject로 담아 JWT 생성
-    public String generateToken(String email) {
+    // 이메일과 현재 인증 버전을 담아 60분 동안 유효한 JWT를 생성한다.
+    public String generateToken(String email, Long tokenVersion) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + ACCESS_TOKEN_EXPIRATION_TIME);
 
         return Jwts.builder()
                 .setSubject(email)
+                .claim(TOKEN_VERSION_CLAIM, tokenVersion == null ? 0L : tokenVersion)
                 .setIssuedAt(now)
                 .setExpiration(expiration)
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -49,6 +51,18 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody()
                 .getSubject();
+    }
+
+    // 토큰에 저장된 사용자 인증 버전을 반환하며 이전 토큰은 초기 버전 0으로 처리한다.
+    public Long getTokenVersionFromToken(String token) {
+        Number tokenVersion = Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get(TOKEN_VERSION_CLAIM, Number.class);
+
+        return tokenVersion == null ? 0L : tokenVersion.longValue();
     }
 
     // 토큰 유효성 검증

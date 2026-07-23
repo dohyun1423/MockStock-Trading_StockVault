@@ -2,6 +2,8 @@
 package com.stock.mockstock.domain.stock.realtime;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.stock.mockstock.domain.order.enumtype.MarketSession;
+import com.stock.mockstock.domain.order.service.MarketSessionService;
 import com.stock.mockstock.domain.order.service.OrderMatchingService;
 import com.stock.mockstock.domain.stock.kis.KisApprovalKeyService;
 import com.stock.mockstock.global.config.KisProperties;
@@ -25,12 +27,11 @@ public class KisRealtimeWebSocketClient {
 
     private static final String CUSTOMER_TYPE_PERSONAL = "P";
     private static final String SUBSCRIBE = "1";
-    private static final String REALTIME_TRADE_TR_ID = "H0STCNT0";
-    private static final String REALTIME_ORDERBOOK_TR_ID = "H0STASP0";
 
     private final KisApprovalKeyService kisApprovalKeyService;
     private final KisProperties kisProperties;
     private final ObjectMapper objectMapper;
+    private final MarketSessionService marketSessionService;
     private final KisRealtimeTradeMessageParser tradeMessageParser;
     private final KisRealtimeOrderbookMessageParser orderbookMessageParser;
     private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
@@ -41,27 +42,44 @@ public class KisRealtimeWebSocketClient {
 
     // 지정한 종목코드의 실시간 체결가를 기존 KIS WebSocket 연결에 구독 요청한다.
     public void subscribeTrade(String symbol) {
-        subscribe(symbol, REALTIME_TRADE_TR_ID, "trade");
+        MarketSession marketSession = marketSessionService.getCurrentSession();
+
+        if (marketSessionService.isAfterMarketPollingSession(marketSession)) {
+            log.debug("KIS realtime trade delegated to REST polling. symbol={}, session={}", symbol, marketSession);
+            return;
+        }
+
+        String trId = KisRealtimeTrId.resolveTradeTrId(marketSession);
+
+        subscribe(symbol, trId, "trade", marketSession);
     }
 
     // 지정한 종목코드의 실시간 호가를 기존 KIS WebSocket 연결에 구독 요청한다.
     public void subscribeOrderbook(String symbol) {
-        subscribe(symbol, REALTIME_ORDERBOOK_TR_ID, "orderbook");
+        MarketSession marketSession = marketSessionService.getCurrentSession();
+
+        if (marketSessionService.isAfterMarketPollingSession(marketSession)) {
+            log.debug("KIS realtime orderbook delegated to REST polling. symbol={}, session={}", symbol, marketSession);
+            return;
+        }
+
+        String trId = KisRealtimeTrId.resolveOrderbookTrId(marketSession);
+
+        subscribe(symbol, trId, "orderbook", marketSession);
     }
 
     // KIS WebSocket 연결을 재사용해서 전달받은 TR ID로 구독 메시지를 전송한다.
-    private void subscribe(String symbol, String trId, String logType) {
+    private void subscribe(String symbol, String trId, String logType, MarketSession marketSession) {
         try {
             String normalizedSymbol = normalizeSymbol(symbol);
             String subscribeKey = trId + ":" + normalizedSymbol;
+            String approvalKey = kisApprovalKeyService.getApprovalKey();
+            WebSocketSession currentSession = getOrCreateSession();
 
             if (!subscribedKeys.add(subscribeKey)) {
                 log.info("KIS realtime already subscribed. key={}", subscribeKey);
                 return;
             }
-
-            String approvalKey = kisApprovalKeyService.getApprovalKey();
-            WebSocketSession currentSession = getOrCreateSession();
 
             currentSession.sendMessage(new TextMessage(createSubscribeMessage(
                     approvalKey,
@@ -69,7 +87,13 @@ public class KisRealtimeWebSocketClient {
                     normalizedSymbol
             )));
 
-            log.info("KIS realtime {} subscribed. symbol={}", logType, normalizedSymbol);
+            log.info(
+                    "KIS realtime {} subscribed. symbol={}, session={}, trId={}",
+                    logType,
+                    normalizedSymbol,
+                    marketSession,
+                    trId
+            );
         } catch (Exception e) {
             log.error("KIS realtime {} subscribe failed. symbol={}", logType, symbol, e);
         }
@@ -89,6 +113,7 @@ public class KisRealtimeWebSocketClient {
                 orderMatchingService
         );
 
+        subscribedKeys.clear();
         session = client.execute(
                 handler,
                 new WebSocketHttpHeaders(),
@@ -118,6 +143,7 @@ public class KisRealtimeWebSocketClient {
         return objectMapper.writeValueAsString(message);
     }
 
+    // KIS 요청과 구독 키에 사용할 수 있도록 종목코드를 정규화한다.
     private String normalizeSymbol(String symbol) {
         return String.valueOf(symbol)
                 .trim()

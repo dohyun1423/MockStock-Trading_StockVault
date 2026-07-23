@@ -6,6 +6,18 @@ spring:
     url: jdbc:mysql://localhost:3306/mockstock
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_STARTTLS_ENABLE:false}
+
   sql:
     init:
       mode: always
@@ -17,9 +29,23 @@ spring:
 
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
 
-    show-sql: true
+    show-sql: false
+
+# Hibernate SQL은 콘솔에서 숨기고 실제 경고와 오류는 유지한다.
+logging:
+  level:
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: OFF
 
 server:
   port: 8080
+
+# 15:30~16:00 시간외 REST 데이터 조회 주기를 밀리초 단위로 설정한다.
+kis:
+  after-market-polling-interval-ms: 5000
+  after-market-polling-initial-delay-ms: 5000
+
+app:
+  password-reset-url: ${PASSWORD_RESET_URL:http://localhost:8080/reset-password}

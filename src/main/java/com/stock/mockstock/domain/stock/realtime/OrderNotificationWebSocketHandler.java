@@ -2,7 +2,8 @@
 package com.stock.mockstock.domain.stock.realtime;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.stock.mockstock.global.security.jwt.JwtUtil;
+import com.stock.mockstock.domain.user.entity.User;
+import com.stock.mockstock.global.security.jwt.JwtTokenValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.socket.CloseStatus;
@@ -11,13 +12,14 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
 public class OrderNotificationWebSocketHandler extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper;
-    private final JwtUtil jwtUtil;
+    private final JwtTokenValidator jwtTokenValidator;
     private final StockRealtimeSessionRegistry sessionRegistry;
 
     // 브라우저가 보낸 주문 알림 구독 메시지를 JWT로 검증하고 사용자 email 기준으로 세션을 등록한다.
@@ -38,12 +40,14 @@ public class OrderNotificationWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        if (request.token() == null || !jwtUtil.validateToken(request.token())) {
+        Optional<User> user = jwtTokenValidator.getValidUser(request.token());
+
+        if (user.isEmpty()) {
             session.close(CloseStatus.POLICY_VIOLATION);
             return;
         }
 
-        String email = jwtUtil.getEmailFromToken(request.token());
+        String email = user.get().getEmail();
         sessionRegistry.subscribeUser(email, session);
 
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(Map.of(

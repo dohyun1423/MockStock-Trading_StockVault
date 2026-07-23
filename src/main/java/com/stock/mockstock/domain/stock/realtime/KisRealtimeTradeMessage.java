@@ -1,6 +1,7 @@
 // KIS 실시간 체결가 WebSocket 메시지를 화면 갱신에 필요한 값으로 변환한 DTO
 package com.stock.mockstock.domain.stock.realtime;
 
+import com.stock.mockstock.domain.order.enumtype.MarketSession;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -21,4 +22,5 @@ public class KisRealtimeTradeMessage {
     private long bidPrice;
     private long tradeVolume;
     private long accumulatedVolume;
+    private MarketSession marketSession;
 }

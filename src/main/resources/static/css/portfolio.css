@@ -129,6 +129,10 @@ body {
     min-width: 980px;
 }
 
+.open-order-table {
+    min-width: 1060px;
+}
+
 .holding-table th,
 .holding-table td,
 .open-order-table th,
@@ -241,16 +245,30 @@ body {
     border-top: 1px solid var(--border);
 }
 
+.open-order-edit-btn,
 .open-order-cancel-btn {
     width: 58px;
     height: 30px;
-    border: 1px solid rgba(255, 69, 96, 0.5);
-    background: rgba(255, 69, 96, 0.1);
-    color: var(--red);
     font-family: var(--font-body);
     font-size: 12px;
     font-weight: 800;
     cursor: pointer;
+}
+
+.open-order-edit-btn {
+    border: 1px solid rgba(0, 229, 160, 0.5);
+    background: rgba(0, 229, 160, 0.08);
+    color: var(--accent);
+}
+
+.open-order-edit-btn:hover {
+    background: rgba(0, 229, 160, 0.16);
+}
+
+.open-order-cancel-btn {
+    border: 1px solid rgba(255, 69, 96, 0.5);
+    background: rgba(255, 69, 96, 0.1);
+    color: var(--red);
 }
 
 .open-order-cancel-btn:hover {

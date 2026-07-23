@@ -1,6 +1,11 @@
 // 메인 화면의 관심종목, 차트, 상세정보, 포트폴리오 탭 렌더링을 처리한다.
 let selectedWatchlistSymbol = null;
 let draggedWatchlistId = null;
+let mainActiveMarketView = 'chart';
+let mainSelectedStock = null;
+let mainSelectedQuote = null;
+let mainSelectedHistories = [];
+let mainSelectedPeriod = '1D';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const authenticated = await waitAuthReady();
@@ -215,13 +220,26 @@ async function selectWatchlistStock(stockName, symbol = null) {
         : await fetchStockDetail(stockName);
 
     if (!stock) {
+        mainSelectedStock = null;
+        mainSelectedQuote = null;
+        mainSelectedHistories = [];
+        mainSelectedPeriod = '1D';
+        mainActiveMarketView = 'chart';
         renderMainChart(stockName, [], null, '1D');
         renderStockSideInfo(stockName, null, null);
         return;
     }
 
-    const quote = await fetchStockQuote(stock.symbol);
-    const priceHistories = await fetchStockPriceHistories(stock.symbol, '1D');
+    const [quote, priceHistories] = await Promise.all([
+        fetchStockQuote(stock.symbol),
+        fetchStockPriceHistories(stock.symbol, '1D')
+    ]);
+
+    mainSelectedStock = stock;
+    mainSelectedQuote = quote;
+    mainSelectedHistories = priceHistories;
+    mainSelectedPeriod = '1D';
+    mainActiveMarketView = 'chart';
 
     renderMainChart(stock.name, priceHistories, stock.symbol, '1D', quote);
     renderStockSideInfo(stock.name, stock, quote);
@@ -299,27 +317,12 @@ function resolveMainChartClass(quote, hasChartData, firstPrice, latestPrice) {
     return hasChartData && latestPrice < firstPrice ? 'down' : 'up';
 }
 
-// 가격 이력 데이터로 메인 차트 영역 갱신
-function renderMainChart(stockName, priceHistories = [], symbol = null, activePeriod = '1D', quote = null) {
-    const chartPanel = document.querySelector('.chart-panel');
-
-    if (!chartPanel) {
-        return;
-    }
-
-    // 차트 데이터가 있을 때만 상승/하락 색상을 계산한다.
-    const hasChartData = Array.isArray(priceHistories) && priceHistories.length > 0;
-    const firstPrice = hasChartData ? Number(priceHistories[0]?.closePrice || 0) : 0;
-    const latestPrice = hasChartData ? Number(priceHistories[priceHistories.length - 1]?.closePrice || 0) : 0;
-    // 메인 화면의 정보 카드와 차트 색상이 같은 등락 기준을 쓰도록 quote를 우선 사용한다.
-    const chartClass = resolveMainChartClass(quote, hasChartData, firstPrice, latestPrice);
-
-    chartPanel.innerHTML = `
+// 선택 종목의 차트와 호가 화면에서 공통으로 사용하는 제목, 주문 버튼, 탭을 만든다.
+function createMainMarketHeader(stockName, symbol, activeView, activePeriod = '1D') {
+    return `
         <div class="panel-header chart-main-header">
             <div class="chart-title-row">
-                <div>
-                    <h1>${escapeHtml(stockName)}</h1>
-                </div>
+                <h1>${escapeHtml(stockName)}</h1>
 
                 ${
                     symbol
@@ -360,13 +363,46 @@ function renderMainChart(stockName, priceHistories = [], symbol = null, activePe
                 }
             </div>
 
-            <div class="chart-periods">
-                <button type="button" data-period="1D" class="${activePeriod === '1D' ? 'active' : ''}">1D</button>
-                <button type="button" data-period="1W" class="${activePeriod === '1W' ? 'active' : ''}">1W</button>
-                <button type="button" data-period="1M" class="${activePeriod === '1M' ? 'active' : ''}">1M</button>
-                <button type="button" data-period="1Y" class="${activePeriod === '1Y' ? 'active' : ''}">1Y</button>
+            <div class="main-market-toolbar">
+                <div class="main-market-tabs" role="tablist" aria-label="종목 데이터 화면">
+                    <button type="button" data-market-view="chart" class="${activeView === 'chart' ? 'active' : ''}">차트</button>
+                    <button type="button" data-market-view="orderbook" class="${activeView === 'orderbook' ? 'active' : ''}">호가</button>
+                </div>
+
+                ${
+                    activeView === 'chart'
+                        ? `
+                            <div class="chart-periods">
+                                <button type="button" data-period="1D" class="${activePeriod === '1D' ? 'active' : ''}">1D</button>
+                                <button type="button" data-period="1W" class="${activePeriod === '1W' ? 'active' : ''}">1W</button>
+                                <button type="button" data-period="1M" class="${activePeriod === '1M' ? 'active' : ''}">1M</button>
+                                <button type="button" data-period="1Y" class="${activePeriod === '1Y' ? 'active' : ''}">1Y</button>
+                            </div>
+                        `
+                        : ''
+                }
             </div>
         </div>
+    `;
+}
+
+// 가격 이력 데이터로 메인 차트 영역 갱신
+function renderMainChart(stockName, priceHistories = [], symbol = null, activePeriod = '1D', quote = null) {
+    const chartPanel = document.querySelector('.chart-panel');
+
+    if (!chartPanel) {
+        return;
+    }
+
+    // 차트 데이터가 있을 때만 상승/하락 색상을 계산한다.
+    const hasChartData = Array.isArray(priceHistories) && priceHistories.length > 0;
+    const firstPrice = hasChartData ? Number(priceHistories[0]?.closePrice || 0) : 0;
+    const latestPrice = hasChartData ? Number(priceHistories[priceHistories.length - 1]?.closePrice || 0) : 0;
+    // 메인 화면의 정보 카드와 차트 색상이 같은 등락 기준을 쓰도록 quote를 우선 사용한다.
+    const chartClass = resolveMainChartClass(quote, hasChartData, firstPrice, latestPrice);
+
+    chartPanel.innerHTML = `
+        ${createMainMarketHeader(stockName, symbol, 'chart', activePeriod)}
 
         <div class="main-chart-box">
             <div class="chart-grid"></div>
@@ -385,8 +421,194 @@ function renderMainChart(stockName, priceHistories = [], symbol = null, activePe
     `;
 
     bindChartPeriodButtons(stockName, symbol, quote);
+    bindMainMarketViewButtons();
     bindMainChartTooltip();
     bindChartActionButtons();
+}
+
+// 메인 화면의 차트와 호가 탭 전환 이벤트를 연결한다.
+function bindMainMarketViewButtons() {
+    const buttons = document.querySelectorAll('.main-market-tabs button');
+
+    buttons.forEach((button) => {
+        button.addEventListener('click', async () => {
+            const targetView = button.dataset.marketView;
+            const stock = mainSelectedStock;
+
+            if (!stock?.symbol || targetView === mainActiveMarketView) {
+                return;
+            }
+
+            mainActiveMarketView = targetView;
+
+            if (targetView === 'chart') {
+                renderMainChart(
+                    stock.name,
+                    mainSelectedHistories,
+                    stock.symbol,
+                    mainSelectedPeriod,
+                    mainSelectedQuote
+                );
+                return;
+            }
+
+            const requestedSymbol = normalizeMainSymbol(stock.symbol);
+            renderMainOrderbook(stock, mainSelectedQuote, null, true);
+
+            const orderbook = await fetchMainStockOrderbook(stock.symbol);
+
+            if (
+                mainActiveMarketView !== 'orderbook'
+                || requestedSymbol !== normalizeMainSymbol(mainSelectedStock?.symbol)
+            ) {
+                return;
+            }
+
+            renderMainOrderbook(stock, mainSelectedQuote, orderbook);
+        });
+    });
+}
+
+// 종목코드 기준으로 메인 호가 탭에 표시할 호가 데이터를 조회한다.
+async function fetchMainStockOrderbook(symbol) {
+    if (!symbol) {
+        return null;
+    }
+
+    const response = await authFetch(`/api/stocks/${encodeURIComponent(symbol)}/orderbook`, {
+        cache: 'no-store'
+    });
+
+    if (!response || !response.ok) {
+        return null;
+    }
+
+    return await response.json();
+}
+
+// 선택 종목의 매도·매수 호가와 주요 가격 정보를 메인 호가 탭에 표시한다.
+function renderMainOrderbook(stock, quote, orderbook, loading = false) {
+    const chartPanel = document.querySelector('.chart-panel');
+
+    if (!chartPanel || !stock) {
+        return;
+    }
+
+    const levels = orderbook?.levels || [];
+    const currentPrice = Number(orderbook?.currentPrice || quote?.currentPrice || stock.currentPrice || 0);
+    const basePrice = Number(orderbook?.basePrice || (currentPrice - Number(quote?.changePrice || 0)) || currentPrice);
+
+    chartPanel.innerHTML = `
+        ${createMainMarketHeader(stock.name, stock.symbol, 'orderbook', mainSelectedPeriod)}
+
+        <div class="main-orderbook-box">
+            ${
+                loading
+                    ? `
+                        <div class="main-market-empty">
+                            <p>호가 정보를 불러오는 중입니다.</p>
+                            <span>현재 매도·매수 대기 정보를 조회하고 있습니다.</span>
+                        </div>
+                    `
+                    : levels.length > 0
+                        ? createMainOrderbookMarkup(orderbook, currentPrice, basePrice)
+                        : `
+                            <div class="main-market-empty">
+                                <p>호가 정보를 불러오지 못했습니다.</p>
+                                <span>잠시 후 호가 탭을 다시 선택해 주세요.</span>
+                            </div>
+                        `
+            }
+        </div>
+    `;
+
+    bindMainMarketViewButtons();
+    bindChartActionButtons();
+}
+
+// 메인 호가 탭에서 사용할 매도·매수 호가 사다리 마크업을 만든다.
+function createMainOrderbookMarkup(orderbook, currentPrice, basePrice) {
+    const levels = orderbook.levels || [];
+    const askLevels = [...levels].reverse();
+    const bidLevels = [...levels];
+
+    return `
+        <section class="main-orderbook-ladder">
+            <div class="main-orderbook-board">
+                <div class="main-orderbook-side-label sell">
+                    판매 대기 ${formatNumber(orderbook.totalAskQuantity)}
+                </div>
+
+                <div class="main-orderbook-rows">
+                    ${askLevels.map((level) => createMainOrderbookRow(level, 'ask')).join('')}
+
+                    <div class="main-orderbook-current">
+                        <strong>${formatNumber(currentPrice)}원</strong>
+                        <span>${formatSignedNumber(calculateMainOrderbookRate(currentPrice, basePrice))}%</span>
+                    </div>
+
+                    ${bidLevels.map((level) => createMainOrderbookRow(level, 'bid')).join('')}
+                </div>
+
+                <div class="main-orderbook-side-label buy">
+                    구매 대기 ${formatNumber(orderbook.totalBidQuantity)}
+                </div>
+            </div>
+
+            <aside class="main-orderbook-info">
+                <h3>호가 정보</h3>
+                <dl>
+                    <div><dt>종목코드</dt><dd>${escapeHtml(orderbook.symbol)}</dd></div>
+                    <div><dt>기준가</dt><dd>${formatNumber(basePrice)}원</dd></div>
+                    <div><dt>시가</dt><dd>${formatNumber(orderbook.openPrice)}원</dd></div>
+                    <div><dt>고가</dt><dd class="up">${formatNumber(orderbook.highPrice)}원</dd></div>
+                    <div><dt>저가</dt><dd class="down">${formatNumber(orderbook.lowPrice)}원</dd></div>
+                    <div><dt>거래량</dt><dd>${formatNumber(orderbook.volume)}</dd></div>
+                </dl>
+            </aside>
+        </section>
+    `;
+}
+
+// 매도 또는 매수 한 단계의 가격과 잔량을 메인 호가 행으로 만든다.
+function createMainOrderbookRow(level, side) {
+    const isAsk = side === 'ask';
+    const price = isAsk ? level.askPrice : level.bidPrice;
+    const quantity = isAsk ? level.askQuantity : level.bidQuantity;
+    const rate = isAsk ? level.askRate : level.bidRate;
+
+    return `
+        <div class="main-orderbook-row ${isAsk ? 'ask' : 'bid'}">
+            <div class="main-orderbook-quantity ${isAsk ? 'left' : 'empty'}">
+                ${isAsk ? `<span style="width: ${getMainOrderbookBarWidth(quantity)}%"></span><strong>${formatNumber(quantity)}</strong>` : ''}
+            </div>
+            <div class="main-orderbook-price ${isAsk ? 'sell' : 'buy'}">
+                <strong>${formatNumber(price)}</strong>
+                <em>${formatSignedNumber(rate)}%</em>
+            </div>
+            <div class="main-orderbook-quantity ${isAsk ? 'empty' : 'right'}">
+                ${isAsk ? '' : `<span style="width: ${getMainOrderbookBarWidth(quantity)}%"></span><strong>${formatNumber(quantity)}</strong>`}
+            </div>
+        </div>
+    `;
+}
+
+// 호가 잔량을 행 안에서 비교할 수 있도록 막대 너비를 제한한다.
+function getMainOrderbookBarWidth(quantity) {
+    const value = Number(quantity || 0);
+    return Math.min(100, Math.max(8, value / 1000));
+}
+
+// 기준가 대비 호가의 등락률을 소수점 둘째 자리까지 계산한다.
+function calculateMainOrderbookRate(price, basePrice) {
+    const current = Number(price || 0);
+    const base = Number(basePrice || 0);
+
+    if (current === 0 || base === 0) {
+        return 0;
+    }
+
+    return Math.round(((current - base) * 10000 / base)) / 100;
 }
 
 // 차트 상단의 매수, 매도, 관심 버튼 연결
@@ -630,6 +852,9 @@ function bindChartPeriodButtons(stockName, symbol, quote = null) {
             }
 
             const priceHistories = await fetchStockPriceHistories(symbol, period);
+            mainSelectedHistories = priceHistories;
+            mainSelectedPeriod = period;
+            mainActiveMarketView = 'chart';
             renderMainChart(stockName, priceHistories, symbol, period, quote);
         });
     });

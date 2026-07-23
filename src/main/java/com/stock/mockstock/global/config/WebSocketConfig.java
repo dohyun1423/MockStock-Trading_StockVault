@@ -6,7 +6,7 @@ import com.stock.mockstock.domain.stock.realtime.KisRealtimeWebSocketClient;
 import com.stock.mockstock.domain.stock.realtime.OrderNotificationWebSocketHandler;
 import com.stock.mockstock.domain.stock.realtime.StockRealtimeSessionRegistry;
 import com.stock.mockstock.domain.stock.realtime.StockRealtimeWebSocketHandler;
-import com.stock.mockstock.global.security.jwt.JwtUtil;
+import com.stock.mockstock.global.security.jwt.JwtTokenValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -19,7 +19,7 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 public class WebSocketConfig implements WebSocketConfigurer {
 
     private final ObjectMapper objectMapper;
-    private final JwtUtil jwtUtil;
+    private final JwtTokenValidator jwtTokenValidator;
     private final StockRealtimeSessionRegistry sessionRegistry;
     private final KisRealtimeWebSocketClient kisRealtimeWebSocketClient;
 
@@ -29,7 +29,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(
                         new StockRealtimeWebSocketHandler(
                                 objectMapper,
-                                jwtUtil,
+                                jwtTokenValidator,
                                 sessionRegistry,
                                 kisRealtimeWebSocketClient
                         ),
@@ -40,7 +40,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(
                         new OrderNotificationWebSocketHandler(
                                 objectMapper,
-                                jwtUtil,
+                                jwtTokenValidator,
                                 sessionRegistry
                         ),
                         "/ws/orders"

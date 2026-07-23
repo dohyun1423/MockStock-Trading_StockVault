@@ -2,7 +2,7 @@
 package com.stock.mockstock.domain.stock.realtime;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.stock.mockstock.global.security.jwt.JwtUtil;
+import com.stock.mockstock.global.security.jwt.JwtTokenValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.socket.CloseStatus;
@@ -17,7 +17,7 @@ import java.util.Map;
 public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper;
-    private final JwtUtil jwtUtil;
+    private final JwtTokenValidator jwtTokenValidator;
     private final StockRealtimeSessionRegistry sessionRegistry;
     private final KisRealtimeWebSocketClient kisRealtimeWebSocketClient;
 
@@ -34,7 +34,7 @@ public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        if (request.token() == null || !jwtUtil.validateToken(request.token())) {
+        if (jwtTokenValidator.getValidUser(request.token()).isEmpty()) {
             session.close(CloseStatus.POLICY_VIOLATION);
             return;
         }

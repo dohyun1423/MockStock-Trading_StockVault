@@ -27,6 +27,18 @@ public class ViewController {
         return "signup";
     }
 
+    // 비밀번호 재설정 메일을 요청하는 화면으로 이동한다.
+    @GetMapping("/forgot-password")
+    public String forgotPasswordPage() {
+        return "forgot_password";
+    }
+
+    // 이메일의 일회용 토큰으로 새 비밀번호를 입력하는 화면으로 이동한다.
+    @GetMapping("/reset-password")
+    public String resetPasswordPage() {
+        return "reset_password";
+    }
+
     // 메인 화면 이동
     @GetMapping("/main")
     public String mainPage() {
