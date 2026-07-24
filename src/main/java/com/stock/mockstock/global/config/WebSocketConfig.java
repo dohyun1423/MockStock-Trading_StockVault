@@ -2,6 +2,7 @@
 package com.stock.mockstock.global.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.stock.mockstock.domain.order.service.MarketSessionService;
 import com.stock.mockstock.domain.stock.realtime.KisRealtimeWebSocketClient;
 import com.stock.mockstock.domain.stock.realtime.OrderNotificationWebSocketHandler;
 import com.stock.mockstock.domain.stock.realtime.StockRealtimeBroadcaster;
@@ -24,6 +25,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final StockRealtimeSessionRegistry sessionRegistry;
     private final KisRealtimeWebSocketClient kisRealtimeWebSocketClient;
     private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
+    private final MarketSessionService marketSessionService;
 
     // 브라우저 실시간 구독 endpoint를 등록한다.
     @Override
@@ -34,7 +36,8 @@ public class WebSocketConfig implements WebSocketConfigurer {
                                 jwtTokenValidator,
                                 sessionRegistry,
                                 kisRealtimeWebSocketClient,
-                                stockRealtimeBroadcaster
+                                stockRealtimeBroadcaster,
+                                marketSessionService
                         ),
                         "/ws/stocks"
                 )

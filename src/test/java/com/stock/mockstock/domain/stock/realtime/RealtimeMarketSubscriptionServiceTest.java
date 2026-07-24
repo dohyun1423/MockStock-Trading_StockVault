@@ -1,4 +1,4 @@
-// Verifies that unsupported transition sessions keep snapshots and 16:00 starts KIS subscriptions.
+// 통합 실시간 구독이 활성 거래 세션에만 수행되는지 검증한다.
 package com.stock.mockstock.domain.stock.realtime;
 
 import com.stock.mockstock.domain.order.enumtype.MarketSession;
@@ -17,7 +17,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AfterMarketRealtimePollingServiceTest {
+class RealtimeMarketSubscriptionServiceTest {
 
     @Mock
     private MarketSessionService marketSessionService;
@@ -32,29 +32,16 @@ class AfterMarketRealtimePollingServiceTest {
     private KisRealtimeWebSocketClient realtimeWebSocketClient;
 
     @InjectMocks
-    private AfterMarketRealtimePollingService pollingService;
+    private RealtimeMarketSubscriptionService subscriptionService;
 
-    // Verifies that 15:30-15:40 does not request incompatible overtime data.
+    // 장 마감 동시호가와 NXT 시작 전 대기 구간에서는 신규 실시간 구독을 만들지 않는다.
     @Test
-    void keepLastSnapshotDuringAfterMarketWait() {
+    void skipSubscriptionDuringPausedSession() {
         when(marketSessionService.getCurrentSession()).thenReturn(MarketSession.AFTER_MARKET_WAIT);
+        when(marketSessionService.isRealtimeDataAvailable(MarketSession.AFTER_MARKET_WAIT))
+                .thenReturn(false);
 
-        pollingService.routeAfterMarketRealtimeData();
-
-        verifyNoInteractions(
-                sessionRegistry,
-                openOrderSubscriptionService,
-                realtimeWebSocketClient
-        );
-    }
-
-    // Verifies that 15:40-16:00 does not request incompatible single-price data.
-    @Test
-    void keepLastSnapshotDuringAfterMarketClosingPrice() {
-        when(marketSessionService.getCurrentSession())
-                .thenReturn(MarketSession.AFTER_MARKET_CLOSING_PRICE);
-
-        pollingService.routeAfterMarketRealtimeData();
+        subscriptionService.refreshRealtimeSubscriptions();
 
         verifyNoInteractions(
                 sessionRegistry,
@@ -63,15 +50,16 @@ class AfterMarketRealtimePollingServiceTest {
         );
     }
 
-    // Verifies that browser and open-order symbols subscribe at the 16:00 single-price session.
+    // NXT 애프터마켓이 시작되면 화면과 미체결 주문 종목을 모두 구독한다.
     @Test
-    void subscribeAfterHoursWebSocketAtSinglePriceSession() {
-        when(marketSessionService.getCurrentSession())
-                .thenReturn(MarketSession.AFTER_HOURS_SINGLE_PRICE);
+    void subscribeTargetsDuringNxtAfterMarket() {
+        when(marketSessionService.getCurrentSession()).thenReturn(MarketSession.NXT_AFTER_MARKET);
+        when(marketSessionService.isRealtimeDataAvailable(MarketSession.NXT_AFTER_MARKET))
+                .thenReturn(true);
         when(sessionRegistry.getSubscribedSymbols()).thenReturn(Set.of("005930"));
         when(openOrderSubscriptionService.getOpenOrderSymbols()).thenReturn(Set.of("000660"));
 
-        pollingService.routeAfterMarketRealtimeData();
+        subscriptionService.refreshRealtimeSubscriptions();
 
         verify(realtimeWebSocketClient).subscribeTrade("005930");
         verify(realtimeWebSocketClient).subscribeOrderbook("005930");

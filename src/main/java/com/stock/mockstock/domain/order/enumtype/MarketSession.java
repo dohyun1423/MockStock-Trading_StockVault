@@ -25,6 +25,9 @@ public enum MarketSession {
     // 시간외 단일가 거래 시간
     AFTER_HOURS_SINGLE_PRICE,
 
+    // NXT 애프터마켓 연속매매 시간
+    NXT_AFTER_MARKET,
+
     // 다음 거래 세션을 위한 예약 주문 시간
     RESERVATION,
 

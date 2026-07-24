@@ -2,6 +2,8 @@
 package com.stock.mockstock.domain.stock.realtime;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.stock.mockstock.domain.order.enumtype.MarketSession;
+import com.stock.mockstock.domain.order.service.MarketSessionService;
 import com.stock.mockstock.global.security.jwt.JwtTokenValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
     private final StockRealtimeSessionRegistry sessionRegistry;
     private final KisRealtimeWebSocketClient kisRealtimeWebSocketClient;
     private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
+    private final MarketSessionService marketSessionService;
 
     // 브라우저가 보낸 SUBSCRIBE 메시지를 검증하고 종목 실시간 데이터를 구독한다.
     @Override
@@ -56,9 +59,14 @@ public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
         kisRealtimeWebSocketClient.subscribeTrade(symbol);
         kisRealtimeWebSocketClient.subscribeOrderbook(symbol);
 
+        MarketSession marketSession = marketSessionService.getCurrentSession();
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(Map.of(
                 "type", "SUBSCRIBED",
-                "symbol", symbol
+                "symbol", symbol,
+                "marketSession", marketSession,
+                "marketDisplayName", marketSessionService.getDisplayName(marketSession),
+                "realtimePaused",
+                marketSessionService.isRealtimeSubscriptionPausedSession(marketSession)
         ))));
 
         // Sends the last valid values immediately so a new page does not start with zero data.

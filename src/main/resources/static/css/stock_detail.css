@@ -56,6 +56,13 @@ body {
     margin-bottom: 8px;
 }
 
+.stock-title-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+}
+
 .stock-meta {
     display: flex;
     flex-wrap: wrap;
@@ -726,15 +733,19 @@ body {
 
 .orderbook-rows {
     min-height: 0;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows:
+        repeat(var(--orderbook-level-count, 10), minmax(0, 1fr))
+        44px
+        repeat(var(--orderbook-level-count, 10), minmax(0, 1fr));
+    overflow: hidden;
 }
 
 .orderbook-row {
     display: grid;
     grid-template-columns: minmax(92px, 1fr) 136px minmax(92px, 1fr);
-    flex: 1 1 0;
-    min-height: 29px;
+    min-height: 0;
+    overflow: hidden;
     border-bottom: 1px solid rgba(26, 37, 53, 0.65);
 }
 
@@ -747,6 +758,9 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
     border-left: 1px solid var(--border);
     border-right: 1px solid var(--border);
     font-family: var(--font-mono);
@@ -761,13 +775,13 @@ body {
 }
 
 .orderbook-price strong {
-    font-size: 16px;
+    font-size: 14px;
     line-height: 1.05;
 }
 
 .orderbook-price em {
     margin-top: 1px;
-    font-size: 9px;
+    font-size: 8px;
     font-style: normal;
 }
 
@@ -776,7 +790,8 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 44px;
+    height: 44px;
+    min-height: 0;
     margin: 0 84px;
     border: 1px solid var(--muted);
     background: rgba(6, 10, 14, 0.94);
@@ -814,8 +829,8 @@ body {
 
 .orderbook-quantity span {
     position: absolute;
-    top: 7px;
-    bottom: 7px;
+    top: 4px;
+    bottom: 4px;
     border-radius: 5px;
     opacity: 0.22;
 }
@@ -834,7 +849,7 @@ body {
     position: relative;
     z-index: 1;
     color: var(--text);
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .orderbook-info-panel {

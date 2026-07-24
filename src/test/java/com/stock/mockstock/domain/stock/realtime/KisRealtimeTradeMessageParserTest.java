@@ -12,8 +12,8 @@ class KisRealtimeTradeMessageParserTest {
 
     @Test
     void parseRealtimeTradePayload() {
-        // KIS 문서 예시 형식의 H0STCNT0 실시간 체결가 payload
-        String payload = "0|H0STCNT0|001|005930^093354^71900^5^-100^-0.14^72023.83^72100^72400^71700^71900^71800^1^3052507";
+        // KIS 문서 예시 형식의 H0UNCNT0 통합 실시간 체결가 payload
+        String payload = "0|H0UNCNT0|001|005930^093354^71900^5^-100^-0.14^72023.83^72100^72400^71700^71900^71800^1^3052507";
 
         KisRealtimeTradeMessage result = parser.parse(payload);
 

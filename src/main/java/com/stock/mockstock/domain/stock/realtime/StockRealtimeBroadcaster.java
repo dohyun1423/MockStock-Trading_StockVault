@@ -49,10 +49,15 @@ public class StockRealtimeBroadcaster {
     // 새로 구독한 브라우저에 마지막 정상 체결가와 호가를 즉시 전달한다.
     public void sendLatestSnapshots(String symbol, WebSocketSession session) {
         snapshotCache.getTrade(symbol)
-                .ifPresent(tradeMessage -> sendToSession(session, symbol, "TRADE", tradeMessage));
+                .ifPresent(tradeMessage -> sendSnapshotToSession(
+                        session,
+                        symbol,
+                        "TRADE",
+                        tradeMessage
+                ));
         snapshotCache.getOrderbook(symbol)
                 .ifPresent(orderbookMessage ->
-                        sendToSession(session, symbol, "ORDERBOOK", orderbookMessage)
+                        sendSnapshotToSession(session, symbol, "ORDERBOOK", orderbookMessage)
                 );
     }
 
@@ -84,8 +89,8 @@ public class StockRealtimeBroadcaster {
         }
     }
 
-    // 지정한 브라우저 WebSocket 세션 하나에 실시간 메시지를 전달한다.
-    private void sendToSession(
+    // 지정한 브라우저 세션에 마지막 정상값임을 표시한 스냅샷 메시지를 전달한다.
+    private void sendSnapshotToSession(
             WebSocketSession session,
             String symbol,
             String type,
@@ -99,6 +104,7 @@ public class StockRealtimeBroadcaster {
             String message = objectMapper.writeValueAsString(Map.of(
                     "type", type,
                     "symbol", symbol,
+                    "snapshot", true,
                     "data", data
             ));
 

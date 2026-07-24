@@ -1,4 +1,4 @@
-// Routes subscribed symbols to the KIS single-price WebSocket only during its supported session.
+// 활성 거래시간에 브라우저와 미체결 주문 종목의 KIS 통합 실시간 구독을 보장한다.
 package com.stock.mockstock.domain.stock.realtime;
 
 import com.stock.mockstock.domain.order.enumtype.MarketSession;
@@ -18,37 +18,32 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "kis.provider", havingValue = "kis")
-public class AfterMarketRealtimePollingService {
+public class RealtimeMarketSubscriptionService {
 
     private final MarketSessionService marketSessionService;
     private final StockRealtimeSessionRegistry sessionRegistry;
     private final OpenOrderRealtimeSubscriptionService openOrderSubscriptionService;
     private final KisRealtimeWebSocketClient realtimeWebSocketClient;
 
-    private final Set<String> afterHoursSubscribedSymbols = ConcurrentHashMap.newKeySet();
+    private final Set<String> routedSymbols = ConcurrentHashMap.newKeySet();
 
-    // Starts single-price subscriptions at 16:00 and keeps the last valid snapshot before then.
+    // 현재 세션이 실시간 거래 가능 상태가 되면 필요한 모든 종목을 통합 WebSocket에 구독한다.
     @Scheduled(
-            fixedDelayString = "${kis.after-market-polling-interval-ms:5000}",
-            initialDelayString = "${kis.after-market-polling-initial-delay-ms:5000}"
+            fixedDelayString = "${kis.realtime-subscription-refresh-interval-ms:5000}",
+            initialDelayString = "${kis.realtime-subscription-initial-delay-ms:5000}"
     )
-    public void routeAfterMarketRealtimeData() {
+    public void refreshRealtimeSubscriptions() {
         MarketSession marketSession = marketSessionService.getCurrentSession();
 
-        if (marketSession == MarketSession.AFTER_HOURS_SINGLE_PRICE) {
-            subscribeAfterHoursWebSocketTargets();
+        if (!marketSessionService.isRealtimeDataAvailable(marketSession)) {
+            routedSymbols.clear();
             return;
         }
 
-        afterHoursSubscribedSymbols.clear();
-    }
-
-    // Subscribes browser and open-order symbols once per single-price session.
-    private void subscribeAfterHoursWebSocketTargets() {
         Set<String> targetSymbols = getTargetSymbols();
 
         for (String symbol : targetSymbols) {
-            if (!afterHoursSubscribedSymbols.add(symbol)) {
+            if (!routedSymbols.add(symbol)) {
                 continue;
             }
 
@@ -58,13 +53,14 @@ public class AfterMarketRealtimePollingService {
 
         if (!targetSymbols.isEmpty()) {
             log.debug(
-                    "After-hours single-price WebSocket targets checked. symbolCount={}",
+                    "Unified realtime subscription targets checked. session={}, symbolCount={}",
+                    marketSession,
                     targetSymbols.size()
             );
         }
     }
 
-    // Combines symbols viewed in browsers with symbols required by open orders.
+    // 현재 화면에서 보는 종목과 자동체결 감시가 필요한 미체결 주문 종목을 합친다.
     private Set<String> getTargetSymbols() {
         Set<String> targetSymbols = new HashSet<>(sessionRegistry.getSubscribedSymbols());
         targetSymbols.addAll(openOrderSubscriptionService.getOpenOrderSymbols());

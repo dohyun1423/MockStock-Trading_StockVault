@@ -471,6 +471,14 @@ body {
     gap: 18px;
 }
 
+.chart-title-group {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    min-width: 0;
+}
+
 .chart-action-buttons {
     display: flex;
     align-items: center;
@@ -649,15 +657,19 @@ body {
 
 .main-orderbook-rows {
     min-height: 0;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows:
+        repeat(var(--orderbook-level-count, 10), minmax(0, 1fr))
+        38px
+        repeat(var(--orderbook-level-count, 10), minmax(0, 1fr));
+    overflow: hidden;
 }
 
 .main-orderbook-row {
     display: grid;
     grid-template-columns: minmax(80px, 1fr) 128px minmax(80px, 1fr);
-    flex: 1 1 0;
-    min-height: 20px;
+    min-height: 0;
+    overflow: hidden;
     border-bottom: 1px solid rgba(26, 37, 53, 0.6);
 }
 
@@ -666,6 +678,9 @@ body {
     align-items: center;
     justify-content: center;
     gap: 8px;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
     border-left: 1px solid var(--border);
     border-right: 1px solid var(--border);
     font-family: var(--font-mono);
@@ -734,7 +749,8 @@ body {
     align-items: center;
     justify-content: center;
     gap: 10px;
-    min-height: 38px;
+    height: 38px;
+    min-height: 0;
     border-top: 1px solid var(--muted);
     border-bottom: 1px solid var(--muted);
     background: rgba(6, 10, 14, 0.94);

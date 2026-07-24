@@ -20,7 +20,19 @@
 <main class="stock-detail-layout">
     <section class="stock-summary">
         <div class="stock-title-area">
-            <h1 class="stock-title" th:text="${keyword}">삼성전자</h1>
+            <div class="stock-title-row">
+                <h1 class="stock-title" th:text="${keyword}">삼성전자</h1>
+
+                <div
+                    class="market-realtime-status idle"
+                    data-detail-realtime-status
+                    aria-live="polite"
+                >
+                    <span aria-hidden="true"></span>
+                    <strong>대기</strong>
+                    <time hidden></time>
+                </div>
+            </div>
 
             <div class="stock-meta">
                 <div class="meta-item">

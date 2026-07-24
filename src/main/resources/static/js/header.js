@@ -124,6 +124,7 @@ function bindStockSearch() {
 
     input.addEventListener('input', () => {
         clearTimeout(timerId);
+        clearSearchResults();
 
         const keyword = input.value.trim();
 
@@ -137,21 +138,25 @@ function bindStockSearch() {
         }, 250);
     });
 
-    form.addEventListener('submit', (event) => {
+    form.addEventListener('submit', async (event) => {
         event.preventDefault();
-
-        const firstResult = results.querySelector('.search-result-item');
-
-        if (firstResult) {
-            firstResult.click();
-            return;
-        }
 
         const keyword = input.value.trim();
 
-        if (keyword) {
-            goStockDetail(keyword);
+        if (!keyword) {
+            clearSearchResults();
+            return;
         }
+
+        clearTimeout(timerId);
+
+        const stocks = await searchStocks(keyword);
+
+        if (input.value.trim() !== keyword || stocks.length === 0) {
+            return;
+        }
+
+        goStockDetail(stocks[0].symbol);
     });
 
     document.addEventListener('click', (event) => {
@@ -167,11 +172,19 @@ async function searchStocks(keyword) {
 
     if (!response || !response.ok) {
         clearSearchResults();
-        return;
+        return [];
     }
 
-    const stocks = await response.json();
+    const responseBody = await response.json();
+    const stocks = Array.isArray(responseBody) ? responseBody : [];
+    const input = document.getElementById('stock-search-input');
+
+    if (input && input.value.trim() !== keyword) {
+        return [];
+    }
+
     renderSearchResults(stocks);
+    return stocks;
 }
 
 // 종목 검색 결과를 검색창 하단 목록으로 렌더링한다.
@@ -596,6 +609,24 @@ function escapeHtml(value) {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
+}
+
+// 서버 거래 세션 코드를 메인과 상세 화면에서 공통으로 사용할 표시 이름으로 변환한다.
+function resolveMarketSessionDisplayName(marketSession) {
+    const displayNames = {
+        PRE_MARKET: '장전 주문',
+        OPENING_AUCTION: '장 시작 동시호가',
+        REGULAR: '정규장',
+        CLOSING_AUCTION: '장 마감 동시호가',
+        AFTER_MARKET_WAIT: '장후 대기',
+        AFTER_MARKET_CLOSING_PRICE: '장후 시간외',
+        AFTER_HOURS_SINGLE_PRICE: '시간외 단일가',
+        NXT_AFTER_MARKET: 'NXT 애프터마켓',
+        RESERVATION: '예약 주문',
+        CLOSED: '거래 종료'
+    };
+
+    return displayNames[marketSession] || '시장';
 }
 
 // 토큰 수동 연장 버튼에 클릭 이벤트를 연결한다.

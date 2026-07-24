@@ -11,6 +11,12 @@ let mainRealtimeSymbol = null;
 let mainLatestOrderbook = null;
 let mainRealtimeReconnectTimer = null;
 let mainRealtimeReconnectAttempt = 0;
+let mainRealtimeMarketName = '';
+let mainRealtimeStatus = {
+    state: 'idle',
+    label: '대기',
+    updatedAt: ''
+};
 
 const MAIN_REALTIME_RECONNECT_MAX_DELAY = 30000;
 
@@ -22,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     bindDashboardTabs();
+    bindMainRealtimeLifecycle();
     await loadWatchlists();
 });
 
@@ -277,6 +284,9 @@ function connectMainRealtimeSocket(symbol) {
 
     disconnectMainRealtimeSocket();
     mainRealtimeSymbol = normalizedSymbol;
+    mainRealtimeMarketName = '';
+    mainRealtimeStatus.updatedAt = '';
+    updateMainRealtimeStatus('connecting', '연결 중');
     openMainRealtimeSocket();
 }
 
@@ -288,6 +298,8 @@ function openMainRealtimeSocket() {
     if (!symbol || !token || getTokenRemainingMs(token) <= 0) {
         return;
     }
+
+    updateMainRealtimeStatus('connecting', '구독 중');
 
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const socket = new WebSocket(`${protocol}://${window.location.host}/ws/stocks`);
@@ -328,13 +340,16 @@ function openMainRealtimeSocket() {
         }
 
         if (event.code === 1003) {
+            updateMainRealtimeStatus('closed', '연결 종료');
             return;
         }
 
+        updateMainRealtimeStatus('reconnecting', '재연결 중');
         scheduleMainRealtimeReconnect(symbol);
     };
 
     socket.onerror = () => {
+        socket.close();
     };
 }
 
@@ -381,20 +396,139 @@ function disconnectMainRealtimeSocket() {
     mainRealtimeReconnectAttempt = 0;
 }
 
+// 네트워크 복구와 탭 재활성화 시 선택 종목의 실시간 연결을 즉시 다시 시도한다.
+function bindMainRealtimeLifecycle() {
+    window.addEventListener('online', () => {
+        if (mainRealtimeSymbol && !mainRealtimeSocket) {
+            updateMainRealtimeStatus('connecting', '연결 복구 중');
+            openMainRealtimeSocket();
+        }
+    });
+
+    window.addEventListener('offline', () => {
+        closeMainRealtimeSocketForRetry();
+        updateMainRealtimeStatus('offline', '오프라인');
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (
+            document.visibilityState === 'visible'
+            && mainRealtimeSymbol
+            && !mainRealtimeSocket
+            && navigator.onLine
+        ) {
+            openMainRealtimeSocket();
+        }
+    });
+
+    window.addEventListener('beforeunload', disconnectMainRealtimeSocket);
+}
+
+// 현재 구독 종목은 유지하면서 끊어진 브라우저 WebSocket만 정리한다.
+function closeMainRealtimeSocketForRetry() {
+    if (mainRealtimeReconnectTimer) {
+        window.clearTimeout(mainRealtimeReconnectTimer);
+        mainRealtimeReconnectTimer = null;
+    }
+
+    if (mainRealtimeSocket) {
+        mainRealtimeSocket.onclose = null;
+        mainRealtimeSocket.close();
+    }
+
+    mainRealtimeSocket = null;
+}
+
 // 서버에서 받은 실시간 메시지를 체결가와 호가로 구분해 메인 화면에 반영한다.
 function handleMainRealtimeMessage(message) {
-    if (!message?.type || message.type === 'SUBSCRIBED') {
+    if (!message?.type) {
+        return;
+    }
+
+    if (message.type === 'SUBSCRIBED') {
+        mainRealtimeMarketName = message.marketDisplayName || '';
+
+        if (message.marketSession === 'CLOSED' || message.marketSession === 'RESERVATION') {
+            updateMainRealtimeStatus('closed', mainRealtimeMarketName || '장 종료');
+            return;
+        }
+
+        if (message.realtimePaused) {
+            updateMainRealtimeStatus(
+                'snapshot',
+                `${mainRealtimeMarketName || '전환 구간'} · 마지막 값`
+            );
+            return;
+        }
+
+        updateMainRealtimeStatus(
+            'live',
+            `${mainRealtimeMarketName || '실시간'} · 연결됨`
+        );
         return;
     }
 
     if (message.type === 'TRADE') {
+        updateMainRealtimeDataStatus(message, message.data?.tradeTime);
         applyMainRealtimeTrade(message.data);
         return;
     }
 
     if (message.type === 'ORDERBOOK') {
+        updateMainRealtimeDataStatus(message, message.data?.businessTime);
         applyMainRealtimeOrderbook(message.data);
     }
+}
+
+// 실시간 메시지인지 캐시 스냅샷인지 구분해 상태와 마지막 데이터 시각을 갱신한다.
+function updateMainRealtimeDataStatus(message, dataTime) {
+    if (message.data?.marketSession) {
+        mainRealtimeMarketName = resolveMarketSessionDisplayName(message.data.marketSession);
+    }
+
+    const state = message.snapshot ? 'snapshot' : 'live';
+    const label = message.snapshot
+        ? `${mainRealtimeMarketName || '시장'} · 마지막 정상값`
+        : `${mainRealtimeMarketName || '시장'} · 실시간`;
+
+    updateMainRealtimeStatus(state, label, formatMainRealtimeTradeTime(dataTime));
+}
+
+// 메인 차트와 호가 헤더의 실시간 연결 상태를 저장하고 현재 화면에 반영한다.
+function updateMainRealtimeStatus(state, label, updatedAt = '') {
+    mainRealtimeStatus = {
+        state,
+        label,
+        updatedAt: updatedAt || mainRealtimeStatus.updatedAt
+    };
+
+    const status = document.querySelector('[data-main-realtime-status]');
+
+    if (!status) {
+        return;
+    }
+
+    status.className = `market-realtime-status ${state}`;
+    status.querySelector('strong').textContent = label;
+    status.querySelector('time').textContent = mainRealtimeStatus.updatedAt;
+    status.querySelector('time').hidden = !mainRealtimeStatus.updatedAt;
+}
+
+// 차트가 다시 렌더링돼도 동일한 실시간 상태를 유지할 상태 마크업을 만든다.
+function createMainRealtimeStatusMarkup() {
+    return `
+        <div
+            class="market-realtime-status ${escapeHtml(mainRealtimeStatus.state)}"
+            data-main-realtime-status
+            aria-live="polite"
+        >
+            <span aria-hidden="true"></span>
+            <strong>${escapeHtml(mainRealtimeStatus.label)}</strong>
+            <time ${mainRealtimeStatus.updatedAt ? '' : 'hidden'}>
+                ${escapeHtml(mainRealtimeStatus.updatedAt)}
+            </time>
+        </div>
+    `;
 }
 
 // 실시간 체결가로 메인 종목 정보, 1D 차트, 호가 현재가를 갱신한다.
@@ -603,7 +737,10 @@ function createMainMarketHeader(stockName, symbol, activeView, activePeriod = '1
     return `
         <div class="panel-header chart-main-header">
             <div class="chart-title-row">
-                <h1>${escapeHtml(stockName)}</h1>
+                <div class="chart-title-group">
+                    <h1>${escapeHtml(stockName)}</h1>
+                    ${symbol ? createMainRealtimeStatusMarkup() : ''}
+                </div>
 
                 ${
                     symbol
@@ -827,7 +964,7 @@ function createMainOrderbookMarkup(orderbook, currentPrice, basePrice) {
                     판매 대기 ${formatNumber(orderbook.totalAskQuantity)}
                 </div>
 
-                <div class="main-orderbook-rows">
+                <div class="main-orderbook-rows" style="--orderbook-level-count: ${levels.length}">
                     ${askLevels.map((level) => createMainOrderbookRow(level, 'ask')).join('')}
 
                     <div class="main-orderbook-current">

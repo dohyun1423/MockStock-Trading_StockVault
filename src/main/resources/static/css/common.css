@@ -1,0 +1,58 @@
+/* 실시간 연결 상태와 마지막 데이터 시각을 메인 및 상세 화면에서 공통으로 표시한다. */
+.market-realtime-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    gap: 6px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.market-realtime-status > span {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
+    border-radius: 50%;
+    background: #64748b;
+}
+
+.market-realtime-status strong {
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+}
+
+.market-realtime-status time {
+    color: var(--muted);
+}
+
+.market-realtime-status.live {
+    color: #00e5a0;
+}
+
+.market-realtime-status.snapshot {
+    color: #f59e0b;
+}
+
+.market-realtime-status.connecting,
+.market-realtime-status.reconnecting {
+    color: #60a5fa;
+}
+
+.market-realtime-status.connecting > span,
+.market-realtime-status.reconnecting > span {
+    animation: realtime-status-pulse 1.2s ease-in-out infinite;
+}
+
+.market-realtime-status.offline,
+.market-realtime-status.closed {
+    color: #94a3b8;
+}
+
+@keyframes realtime-status-pulse {
+    50% {
+        opacity: 0.35;
+    }
+}

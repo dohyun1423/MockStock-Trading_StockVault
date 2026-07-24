@@ -44,8 +44,8 @@ server:
 
 # 15:30~16:00 시간외 REST 데이터 조회 주기를 밀리초 단위로 설정한다.
 kis:
-  after-market-polling-interval-ms: 5000
-  after-market-polling-initial-delay-ms: 5000
+  realtime-subscription-refresh-interval-ms: 5000
+  realtime-subscription-initial-delay-ms: 5000
 
 app:
   password-reset-url: ${PASSWORD_RESET_URL:http://localhost:8080/reset-password}

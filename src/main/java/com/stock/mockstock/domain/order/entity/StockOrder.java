@@ -71,7 +71,7 @@ public class StockOrder extends BaseTimeEntity {
 
     // 주문 접수 당시의 거래 세션이다.
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32, columnDefinition = "varchar(32)")
     private MarketSession marketSession;
 
     // 주문의 현재 처리 상태다.

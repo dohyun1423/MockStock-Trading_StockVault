@@ -1,4 +1,4 @@
-// KIS H0STCNT0 실시간 체결가 payload를 DTO로 변환하는 파서
+// KIS KRX·NXT·통합 실시간 체결가 payload를 공통 DTO로 변환하는 파서
 package com.stock.mockstock.domain.stock.realtime;
 
 import com.stock.mockstock.domain.order.enumtype.MarketSession;

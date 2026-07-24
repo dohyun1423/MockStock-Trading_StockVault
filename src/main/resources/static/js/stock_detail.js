@@ -13,6 +13,12 @@ let detailRealtimeReconnectAttempt = 0;
 let detailLatestOrderbook = null;
 let detailChartHistories = [];
 let detailActiveChartPeriod = '1D';
+let detailRealtimeMarketName = '';
+let detailRealtimeStatus = {
+    state: 'idle',
+    label: '대기',
+    updatedAt: ''
+};
 
 const DETAIL_REALTIME_RECONNECT_MAX_DELAY = 30000;
 
@@ -27,6 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     bindFavoriteButton();
     bindDetailOrderButtons();
     bindDetailChartPeriodButtons();
+    bindDetailRealtimeLifecycle();
 
     stockDetailReady = initStockDetail();
     await stockDetailReady;
@@ -128,6 +135,9 @@ function connectDetailRealtimeSocket(symbol) {
 
     disconnectDetailRealtimeSocket();
     detailRealtimeSymbol = normalizedSymbol;
+    detailRealtimeMarketName = '';
+    detailRealtimeStatus.updatedAt = '';
+    updateDetailRealtimeStatus('connecting', '연결 중');
     openDetailRealtimeSocket();
 }
 
@@ -139,6 +149,8 @@ function openDetailRealtimeSocket() {
     if (!symbol || !token || getTokenRemainingMs(token) <= 0) {
         return;
     }
+
+    updateDetailRealtimeStatus('connecting', '구독 중');
 
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const socket = new WebSocket(`${protocol}://${window.location.host}/ws/stocks`);
@@ -179,13 +191,16 @@ function openDetailRealtimeSocket() {
         }
 
         if (event.code === 1003) {
+            updateDetailRealtimeStatus('closed', '연결 종료');
             return;
         }
 
+        updateDetailRealtimeStatus('reconnecting', '재연결 중');
         scheduleDetailRealtimeReconnect(symbol);
     };
 
     socket.onerror = () => {
+        socket.close();
     };
 }
 
@@ -232,6 +247,49 @@ function disconnectDetailRealtimeSocket() {
     detailRealtimeReconnectAttempt = 0;
 }
 
+// 네트워크 복구와 탭 재활성화 시 현재 상세 종목의 실시간 연결을 다시 시도한다.
+function bindDetailRealtimeLifecycle() {
+    window.addEventListener('online', () => {
+        if (detailRealtimeSymbol && !detailRealtimeSocket) {
+            updateDetailRealtimeStatus('connecting', '연결 복구 중');
+            openDetailRealtimeSocket();
+        }
+    });
+
+    window.addEventListener('offline', () => {
+        closeDetailRealtimeSocketForRetry();
+        updateDetailRealtimeStatus('offline', '오프라인');
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (
+            document.visibilityState === 'visible'
+            && detailRealtimeSymbol
+            && !detailRealtimeSocket
+            && navigator.onLine
+        ) {
+            openDetailRealtimeSocket();
+        }
+    });
+
+    window.addEventListener('beforeunload', disconnectDetailRealtimeSocket);
+}
+
+// 현재 상세 종목은 유지하면서 끊어진 브라우저 WebSocket만 정리한다.
+function closeDetailRealtimeSocketForRetry() {
+    if (detailRealtimeReconnectTimer) {
+        window.clearTimeout(detailRealtimeReconnectTimer);
+        detailRealtimeReconnectTimer = null;
+    }
+
+    if (detailRealtimeSocket) {
+        detailRealtimeSocket.onclose = null;
+        detailRealtimeSocket.close();
+    }
+
+    detailRealtimeSocket = null;
+}
+
 // 서버 WebSocket에서 받은 실시간 메시지를 타입별로 화면에 반영한다.
 function handleDetailRealtimeMessage(message) {
     if (!message || !message.type) {
@@ -239,17 +297,72 @@ function handleDetailRealtimeMessage(message) {
     }
 
     if (message.type === 'SUBSCRIBED') {
+        detailRealtimeMarketName = message.marketDisplayName || '';
+
+        if (message.marketSession === 'CLOSED' || message.marketSession === 'RESERVATION') {
+            updateDetailRealtimeStatus('closed', detailRealtimeMarketName || '장 종료');
+            return;
+        }
+
+        if (message.realtimePaused) {
+            updateDetailRealtimeStatus(
+                'snapshot',
+                `${detailRealtimeMarketName || '전환 구간'} · 마지막 값`
+            );
+            return;
+        }
+
+        updateDetailRealtimeStatus(
+            'live',
+            `${detailRealtimeMarketName || '실시간'} · 연결됨`
+        );
         return;
     }
 
     if (message.type === 'TRADE') {
+        updateDetailRealtimeDataStatus(message, message.data?.tradeTime);
         applyRealtimeTrade(message.data);
         return;
     }
 
     if (message.type === 'ORDERBOOK') {
+        updateDetailRealtimeDataStatus(message, message.data?.businessTime);
         applyRealtimeOrderbook(message.data);
     }
+}
+
+// 실시간 메시지와 캐시 스냅샷을 구분해 상태와 마지막 데이터 시각을 갱신한다.
+function updateDetailRealtimeDataStatus(message, dataTime) {
+    if (message.data?.marketSession) {
+        detailRealtimeMarketName = resolveMarketSessionDisplayName(message.data.marketSession);
+    }
+
+    const state = message.snapshot ? 'snapshot' : 'live';
+    const label = message.snapshot
+        ? `${detailRealtimeMarketName || '시장'} · 마지막 정상값`
+        : `${detailRealtimeMarketName || '시장'} · 실시간`;
+
+    updateDetailRealtimeStatus(state, label, formatRealtimeTradeTime(dataTime));
+}
+
+// 상세 화면의 실시간 연결 상태와 마지막 데이터 시각을 저장하고 표시한다.
+function updateDetailRealtimeStatus(state, label, updatedAt = '') {
+    detailRealtimeStatus = {
+        state,
+        label,
+        updatedAt: updatedAt || detailRealtimeStatus.updatedAt
+    };
+
+    const status = document.querySelector('[data-detail-realtime-status]');
+
+    if (!status) {
+        return;
+    }
+
+    status.className = `market-realtime-status ${state}`;
+    status.querySelector('strong').textContent = label;
+    status.querySelector('time').textContent = detailRealtimeStatus.updatedAt;
+    status.querySelector('time').hidden = !detailRealtimeStatus.updatedAt;
 }
 
 // 실시간 체결가로 상세 상단 가격과 1D 차트 마지막 값을 갱신한다.
@@ -917,7 +1030,7 @@ function renderDetailOrderbook(orderbook) {
             <div class="orderbook-main">
                 <div class="orderbook-side-label sell">판매 대기 ${formatNumber(orderbook.totalAskQuantity)}</div>
 
-                <div class="orderbook-rows">
+                <div class="orderbook-rows" style="--orderbook-level-count: ${levels.length}">
                     ${askLevels.map((level) => renderOrderbookAskRow(level)).join('')}
 
                     <div class="orderbook-current-row">
