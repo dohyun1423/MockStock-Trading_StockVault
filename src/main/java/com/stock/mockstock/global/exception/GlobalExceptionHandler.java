@@ -2,7 +2,9 @@
 package com.stock.mockstock.global.exception;
 
 import com.stock.mockstock.global.response.ErrorResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +12,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -37,6 +40,22 @@ public class GlobalExceptionHandler {
     ) {
 
         ErrorResponse response = new ErrorResponse("주문 상태가 변경되었습니다. 다시 조회한 뒤 시도해 주세요.");
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(response);
+    }
+
+    // DB 제약조건 또는 컬럼 불일치 오류의 내부 SQL을 숨기고 사용자용 메시지만 반환한다.
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
+            DataIntegrityViolationException e
+    ) {
+        log.error("Database integrity violation occurred while processing a request.", e);
+
+        ErrorResponse response = new ErrorResponse(
+                "요청한 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)

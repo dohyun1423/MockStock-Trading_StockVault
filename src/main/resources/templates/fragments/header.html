@@ -75,7 +75,7 @@
             <section class="my-info-edit-section">
                 <h3>정보 수정</h3>
 
-                <form class="my-info-form" id="nickname-update-form">
+                <form class="my-info-form my-info-nickname-form" id="nickname-update-form">
                     <label>
                         <span>닉네임 변경</span>
                         <input type="text" id="my-info-nickname-input" maxlength="16" autocomplete="nickname">
@@ -83,15 +83,31 @@
                     <button type="submit">저장</button>
                 </form>
 
-                <form class="my-info-form" id="password-update-form">
+                <form class="my-info-form my-info-password-form" id="password-update-form">
                     <label>
                         <span>현재 비밀번호</span>
-                        <input type="password" id="my-info-current-password" autocomplete="current-password">
+                        <div class="my-info-password-wrap">
+                            <input type="password" id="my-info-current-password" autocomplete="current-password">
+                            <button type="button" class="my-info-password-toggle" data-password-target="my-info-current-password" aria-label="현재 비밀번호 표시">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
                     </label>
 
                     <label>
                         <span>새 비밀번호</span>
-                        <input type="password" id="my-info-new-password" autocomplete="new-password">
+                        <div class="my-info-password-wrap">
+                            <input type="password" id="my-info-new-password" autocomplete="new-password">
+                            <button type="button" class="my-info-password-toggle" data-password-target="my-info-new-password" aria-label="새 비밀번호 표시">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
                     </label>
 
                     <button type="submit">변경</button>

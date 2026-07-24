@@ -18,11 +18,16 @@ public class MarketSessionService {
     public MarketSession getCurrentSession() {
         LocalTime now = ZonedDateTime.now(KOREA_ZONE).toLocalTime();
 
-        if (isBetween(now, "08:00", "08:40")) {
+        return resolveSession(now);
+    }
+
+    // 지정한 한국 시간을 실제 거래소와 NXT 운영시간에 맞는 세션으로 변환한다.
+    MarketSession resolveSession(LocalTime now) {
+        if (isBetween(now, "08:00", "08:50")) {
             return MarketSession.PRE_MARKET;
         }
 
-        if (isBetween(now, "08:40", "09:00")) {
+        if (isBetween(now, "08:50", "09:00")) {
             return MarketSession.OPENING_AUCTION;
         }
 
@@ -38,16 +43,8 @@ public class MarketSessionService {
             return MarketSession.AFTER_MARKET_WAIT;
         }
 
-        if (isBetween(now, "15:40", "16:00")) {
-            return MarketSession.AFTER_MARKET_CLOSING_PRICE;
-        }
-
-        if (isBetween(now, "16:00", "18:00")) {
-            return MarketSession.AFTER_HOURS_SINGLE_PRICE;
-        }
-
-        if (isBetween(now, "18:00", "20:00")) {
-            return MarketSession.RESERVATION;
+        if (isBetween(now, "15:40", "20:00")) {
+            return MarketSession.NXT_AFTER_MARKET;
         }
 
         return MarketSession.CLOSED;
@@ -74,8 +71,9 @@ public class MarketSessionService {
 
     // 가격 조건이 맞으면 즉시 체결을 시도할 수 있는 세션인지 확인한다.
     public boolean isImmediateExecution(MarketSession session) {
-        return session == MarketSession.REGULAR
-                || session == MarketSession.AFTER_MARKET_CLOSING_PRICE
+        return session == MarketSession.PRE_MARKET
+                || session == MarketSession.REGULAR
+                || session == MarketSession.NXT_AFTER_MARKET
                 || session == MarketSession.AFTER_HOURS_SINGLE_PRICE;
     }
 
@@ -85,7 +83,23 @@ public class MarketSessionService {
                 || session == MarketSession.OPENING_AUCTION
                 || session == MarketSession.CLOSING_AUCTION
                 || session == MarketSession.AFTER_MARKET_WAIT
+                || session == MarketSession.AFTER_MARKET_CLOSING_PRICE
                 || session == MarketSession.RESERVATION;
+    }
+
+    // KIS가 지원하지 않는 전환 구간에서 신규 실시간 구독을 잠시 중지할지 확인한다.
+    public boolean isRealtimeSubscriptionPausedSession(MarketSession session) {
+        return session == MarketSession.OPENING_AUCTION
+                || session == MarketSession.CLOSING_AUCTION
+                || session == MarketSession.AFTER_MARKET_WAIT
+                || session == MarketSession.AFTER_MARKET_CLOSING_PRICE;
+    }
+
+    // 통합 WebSocket 체결가와 호가로 화면 갱신 및 자동체결이 가능한 세션인지 확인한다.
+    public boolean isRealtimeDataAvailable(MarketSession session) {
+        return session == MarketSession.PRE_MARKET
+                || session == MarketSession.REGULAR
+                || session == MarketSession.NXT_AFTER_MARKET;
     }
 
     // 거래 세션 코드를 사용자에게 보여줄 이름으로 변환한다.
@@ -98,6 +112,7 @@ public class MarketSessionService {
             case AFTER_MARKET_WAIT -> "장후 대기";
             case AFTER_MARKET_CLOSING_PRICE -> "장후 시간외";
             case AFTER_HOURS_SINGLE_PRICE -> "시간외 단일가";
+            case NXT_AFTER_MARKET -> "NXT 애프터마켓";
             case RESERVATION -> "예약 주문";
             case CLOSED -> "거래 종료";
         };

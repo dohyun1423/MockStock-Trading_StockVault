@@ -2,11 +2,13 @@
 package com.stock.mockstock.global.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.stock.mockstock.domain.order.service.MarketSessionService;
 import com.stock.mockstock.domain.stock.realtime.KisRealtimeWebSocketClient;
 import com.stock.mockstock.domain.stock.realtime.OrderNotificationWebSocketHandler;
+import com.stock.mockstock.domain.stock.realtime.StockRealtimeBroadcaster;
 import com.stock.mockstock.domain.stock.realtime.StockRealtimeSessionRegistry;
 import com.stock.mockstock.domain.stock.realtime.StockRealtimeWebSocketHandler;
-import com.stock.mockstock.global.security.jwt.JwtUtil;
+import com.stock.mockstock.global.security.jwt.JwtTokenValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -19,9 +21,11 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 public class WebSocketConfig implements WebSocketConfigurer {
 
     private final ObjectMapper objectMapper;
-    private final JwtUtil jwtUtil;
+    private final JwtTokenValidator jwtTokenValidator;
     private final StockRealtimeSessionRegistry sessionRegistry;
     private final KisRealtimeWebSocketClient kisRealtimeWebSocketClient;
+    private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
+    private final MarketSessionService marketSessionService;
 
     // 브라우저 실시간 구독 endpoint를 등록한다.
     @Override
@@ -29,9 +33,11 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(
                         new StockRealtimeWebSocketHandler(
                                 objectMapper,
-                                jwtUtil,
+                                jwtTokenValidator,
                                 sessionRegistry,
-                                kisRealtimeWebSocketClient
+                                kisRealtimeWebSocketClient,
+                                stockRealtimeBroadcaster,
+                                marketSessionService
                         ),
                         "/ws/stocks"
                 )
@@ -40,7 +46,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
         registry.addHandler(
                         new OrderNotificationWebSocketHandler(
                                 objectMapper,
-                                jwtUtil,
+                                jwtTokenValidator,
                                 sessionRegistry
                         ),
                         "/ws/orders"

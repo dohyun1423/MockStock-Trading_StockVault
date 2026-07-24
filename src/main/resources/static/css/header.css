@@ -303,6 +303,19 @@
     margin-bottom: 12px;
 }
 
+.my-info-password-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.my-info-password-form > button {
+    grid-column: 1 / -1;
+    justify-self: end;
+    min-width: 132px;
+}
+
 .my-info-form label {
     min-width: 0;
 }
@@ -330,6 +343,35 @@
 .my-info-form input:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.my-info-password-wrap {
+    position: relative;
+}
+
+.my-info-password-wrap input {
+    padding-right: 42px;
+}
+
+.my-info-form .my-info-password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    transform: translateY(-50%);
+}
+
+.my-info-form .my-info-password-toggle:hover,
+.my-info-form .my-info-password-toggle.active {
+    border: none;
+    background: transparent;
+    color: var(--accent);
 }
 
 .my-info-form button {
@@ -473,6 +515,15 @@
 }
 
 @media (max-width: 720px) {
+    .my-info-password-form {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .my-info-password-form > button {
+        grid-column: 1;
+        width: 100%;
+    }
+
     .order-toast-container {
         top: 82px;
         right: 16px;

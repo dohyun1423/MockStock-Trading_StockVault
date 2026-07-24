@@ -1,0 +1,54 @@
+# 배포 환경에서 사용하는 운영 설정을 정의한다.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  sql:
+    init:
+      mode: never
+
+  jpa:
+    defer-datasource-initialization: false
+    hibernate:
+      # 현재 Flyway가 없으므로 최초 배포에서는 update를 임시 사용한다.
+      ddl-auto: update
+    show-sql: false
+
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+
+jwt:
+  secret: ${JWT_SECRET}
+
+kis:
+  base-url: ${KIS_BASE_URL}
+  websocket-url: ${KIS_WEBSOCKET_URL}
+  app-key: ${KIS_APP_KEY}
+  app-secret: ${KIS_APP_SECRET}
+  provider: kis
+  realtime-subscription-refresh-interval-ms: 5000
+  realtime-subscription-initial-delay-ms: 5000
+
+app:
+  password-reset-url: ${PASSWORD_RESET_URL}
+
+logging:
+  level:
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: OFF

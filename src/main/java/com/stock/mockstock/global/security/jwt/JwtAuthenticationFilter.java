@@ -3,7 +3,6 @@ package com.stock.mockstock.global.security.jwt;
 
 import com.stock.mockstock.domain.user.entity.User;
 import com.stock.mockstock.domain.user.enumtype.Role;
-import com.stock.mockstock.domain.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,8 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
-    private final UserRepository userRepository;
+    private final JwtTokenValidator jwtTokenValidator;
 
     @Override
     // Authorization 헤더의 Bearer 토큰을 검사
@@ -43,14 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-        if (!jwtUtil.validateToken(token)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        String email = jwtUtil.getEmailFromToken(token);
-
-        userRepository.findByEmail(email).ifPresent(user -> {
+        jwtTokenValidator.getValidUser(token).ifPresent(user -> {
             UsernamePasswordAuthenticationToken authentication = createAuthentication(user, request);
             SecurityContextHolder.getContext().setAuthentication(authentication);
         });

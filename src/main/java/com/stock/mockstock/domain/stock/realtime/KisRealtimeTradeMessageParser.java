@@ -1,6 +1,7 @@
-// KIS H0STCNT0 실시간 체결가 payload를 DTO로 변환하는 파서
+// KIS KRX·NXT·통합 실시간 체결가 payload를 공통 DTO로 변환하는 파서
 package com.stock.mockstock.domain.stock.realtime;
 
+import com.stock.mockstock.domain.order.enumtype.MarketSession;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -22,6 +23,11 @@ public class KisRealtimeTradeMessageParser {
 
     // 0|H0STCNT0|001|005930^093354^71900^... 형식에서 ^ 뒤 데이터를 분리한다.
     public KisRealtimeTradeMessage parse(String payload) {
+        return parse(payload, MarketSession.REGULAR);
+    }
+
+    // 정규장/시간외 체결가 payload를 공통 DTO로 변환하고 데이터가 들어온 거래 세션을 함께 담는다.
+    public KisRealtimeTradeMessage parse(String payload, MarketSession marketSession) {
         String[] pipeParts = payload.split("\\|", 4);
 
         if (pipeParts.length < 4) {
@@ -48,9 +54,11 @@ public class KisRealtimeTradeMessageParser {
                 .bidPrice(parseLong(values[BID_PRICE]))
                 .tradeVolume(parseLong(values[TRADE_VOLUME]))
                 .accumulatedVolume(parseLong(values[ACCUMULATED_VOLUME]))
+                .marketSession(marketSession)
                 .build();
     }
 
+    // KIS 문자열 숫자 값을 long 타입으로 변환한다.
     private long parseLong(String value) {
         if (value == null || value.isBlank()) {
             return 0L;
@@ -59,6 +67,7 @@ public class KisRealtimeTradeMessageParser {
         return Long.parseLong(value.replaceAll("[^0-9-]", ""));
     }
 
+    // KIS 문자열 소수 값을 double 타입으로 변환한다.
     private double parseDouble(String value) {
         if (value == null || value.isBlank()) {
             return 0.0;

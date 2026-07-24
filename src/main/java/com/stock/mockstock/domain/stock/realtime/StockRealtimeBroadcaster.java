@@ -4,25 +4,61 @@ package com.stock.mockstock.domain.stock.realtime;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stock.mockstock.domain.order.dto.OrderExecutionNotification;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
 
 import java.util.Map;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class StockRealtimeBroadcaster {
 
     private final ObjectMapper objectMapper;
     private final StockRealtimeSessionRegistry sessionRegistry;
+    private final StockRealtimeSnapshotCache snapshotCache;
 
-    // 실시간 체결가 데이터를 브라우저로 전달한다.
-    public void broadcastTrade(KisRealtimeTradeMessage tradeMessage) {
-        broadcast(tradeMessage.getSymbol(), "TRADE", tradeMessage);
+    // 유효한 실시간 체결가만 캐시에 저장하고 브라우저로 전달한다.
+    public boolean broadcastTrade(KisRealtimeTradeMessage tradeMessage) {
+        return snapshotCache.storeTrade(tradeMessage)
+                .map(storedMessage -> {
+                    broadcast(storedMessage.getSymbol(), "TRADE", storedMessage);
+                    return true;
+                })
+                .orElseGet(() -> {
+                    log.debug("Invalid realtime trade ignored.");
+                    return false;
+                });
     }
 
-    // 실시간 호가 데이터를 브라우저로 전달한다.
-    public void broadcastOrderbook(KisRealtimeOrderbookMessage orderbookMessage) {
-        broadcast(orderbookMessage.getSymbol(), "ORDERBOOK", orderbookMessage);
+    // 모든 값이 0인 호가를 제외한 정상 호가만 캐시에 저장하고 브라우저로 전달한다.
+    public boolean broadcastOrderbook(KisRealtimeOrderbookMessage orderbookMessage) {
+        return snapshotCache.storeOrderbook(orderbookMessage)
+                .map(storedMessage -> {
+                    broadcast(storedMessage.getSymbol(), "ORDERBOOK", storedMessage);
+                    return true;
+                })
+                .orElseGet(() -> {
+                    log.debug("Invalid realtime orderbook ignored.");
+                    return false;
+                });
+    }
+
+    // 새로 구독한 브라우저에 마지막 정상 체결가와 호가를 즉시 전달한다.
+    public void sendLatestSnapshots(String symbol, WebSocketSession session) {
+        snapshotCache.getTrade(symbol)
+                .ifPresent(tradeMessage -> sendSnapshotToSession(
+                        session,
+                        symbol,
+                        "TRADE",
+                        tradeMessage
+                ));
+        snapshotCache.getOrderbook(symbol)
+                .ifPresent(orderbookMessage ->
+                        sendSnapshotToSession(session, symbol, "ORDERBOOK", orderbookMessage)
+                );
     }
 
     // 주문이 체결되었을 때 해당 사용자 브라우저로만 알림을 전달한다.
@@ -50,6 +86,37 @@ public class StockRealtimeBroadcaster {
             sessionRegistry.broadcast(symbol, message);
         } catch (Exception e) {
             throw new IllegalStateException("Realtime message serialization failed.", e);
+        }
+    }
+
+    // 지정한 브라우저 세션에 마지막 정상값임을 표시한 스냅샷 메시지를 전달한다.
+    private void sendSnapshotToSession(
+            WebSocketSession session,
+            String symbol,
+            String type,
+            Object data
+    ) {
+        if (session == null || !session.isOpen()) {
+            return;
+        }
+
+        try {
+            String message = objectMapper.writeValueAsString(Map.of(
+                    "type", type,
+                    "symbol", symbol,
+                    "snapshot", true,
+                    "data", data
+            ));
+
+            session.sendMessage(new TextMessage(message));
+        } catch (Exception e) {
+            log.warn(
+                    "Realtime snapshot send failed. symbol={}, type={}, sessionId={}",
+                    symbol,
+                    type,
+                    session.getId(),
+                    e
+            );
         }
     }
 }

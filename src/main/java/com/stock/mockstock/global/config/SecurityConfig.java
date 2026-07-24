@@ -43,10 +43,15 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(
                                 "/",
+                                "/error",
                                 "/api/users/signup",
                                 "/api/users/login",
+                                "/api/users/password-reset/request",
+                                "/api/users/password-reset/confirm",
                                 "/login",
                                 "/signup",
+                                "/forgot-password",
+                                "/reset-password",
                                 "/main",
                                 "/stocks/detail",
                                 "/portfolio",

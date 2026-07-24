@@ -32,8 +32,39 @@ public class StockRealtimeSessionRegistry {
 
     // 연결이 끊긴 브라우저 session을 전체 구독 목록에서 제거한다.
     public void remove(WebSocketSession session) {
-        sessionsBySymbol.values().forEach(sessions -> sessions.remove(session));
-        sessionsByEmail.values().forEach(sessions -> sessions.remove(session));
+        sessionsBySymbol.forEach((symbol, sessions) -> {
+            sessions.remove(session);
+
+            if (sessions.isEmpty()) {
+                sessionsBySymbol.remove(symbol, sessions);
+            }
+        });
+
+        sessionsByEmail.forEach((email, sessions) -> {
+            sessions.remove(session);
+
+            if (sessions.isEmpty()) {
+                sessionsByEmail.remove(email, sessions);
+            }
+        });
+    }
+
+    // 현재 열려 있는 브라우저가 구독 중인 종목코드 목록을 반환한다.
+    public Set<String> getSubscribedSymbols() {
+        Set<String> subscribedSymbols = ConcurrentHashMap.newKeySet();
+
+        sessionsBySymbol.forEach((symbol, sessions) -> {
+            sessions.removeIf(currentSession -> !currentSession.isOpen());
+
+            if (sessions.isEmpty()) {
+                sessionsBySymbol.remove(symbol, sessions);
+                return;
+            }
+
+            subscribedSymbols.add(symbol);
+        });
+
+        return Set.copyOf(subscribedSymbols);
     }
 
     // 특정 종목을 구독 중인 브라우저들에게 메시지를 전송한다.

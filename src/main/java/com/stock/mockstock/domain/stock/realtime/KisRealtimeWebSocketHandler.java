@@ -2,6 +2,8 @@
 package com.stock.mockstock.domain.stock.realtime;
 
 import com.stock.mockstock.domain.order.service.OrderMatchingService;
+import com.stock.mockstock.domain.order.enumtype.MarketSession;
+import com.stock.mockstock.domain.order.service.MarketSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.socket.PongMessage;
@@ -10,31 +12,61 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.nio.ByteBuffer;
+import java.util.function.BooleanSupplier;
 
 @Slf4j
 @RequiredArgsConstructor
 public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
 
-    private static final String REALTIME_TRADE_TR_ID = "H0STCNT0";
-    private static final String REALTIME_ORDERBOOK_TR_ID = "H0STASP0";
-
     private final KisRealtimeTradeMessageParser tradeMessageParser;
     private final KisRealtimeOrderbookMessageParser orderbookMessageParser;
     private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
     private final OrderMatchingService orderMatchingService;
+    private final MarketSessionService marketSessionService;
+    private final BooleanSupplier messageHandlingEnabled;
 
     // KIS에서 오는 JSON 응답, 실시간 체결 데이터, 실시간 호가 데이터, PINGPONG 메시지를 구분해서 처리한다.
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        String payload = message.getPayload();
+        if (!messageHandlingEnabled.getAsBoolean()) {
+            return;
+        }
 
-        if (payload.startsWith("0|" + REALTIME_TRADE_TR_ID + "|")) {
-            KisRealtimeTradeMessage tradeMessage = tradeMessageParser.parse(payload);
-            stockRealtimeBroadcaster.broadcastTrade(tradeMessage);
+        String payload = message.getPayload();
+        String trId = KisRealtimeTrId.extractTrId(payload);
+        MarketSession marketSession = resolveMarketSession(trId);
+
+        if (
+                KisRealtimeTrId.isNxtOrUnifiedTrId(trId)
+                        && !marketSessionService.isRealtimeDataAvailable(marketSession)
+        ) {
+            log.debug(
+                    "KIS unified realtime message ignored outside active session. session={}, trId={}",
+                    marketSession,
+                    trId
+            );
+            return;
+        }
+
+        if (KisRealtimeTrId.isTradeTrId(trId)) {
+            KisRealtimeTradeMessage tradeMessage = tradeMessageParser.parse(payload, marketSession);
+            boolean broadcasted = stockRealtimeBroadcaster.broadcastTrade(tradeMessage);
+
+            if (!broadcasted) {
+                log.debug(
+                        "Invalid KIS realtime trade dropped. symbol={}, session={}, trId={}",
+                        tradeMessage.getSymbol(),
+                        marketSession,
+                        trId
+                );
+                return;
+            }
 
             log.info(
-                    "KIS realtime trade parsed. symbol={}, price={}, changeRate={}, volume={}",
+                    "KIS realtime trade parsed. symbol={}, session={}, trId={}, price={}, changeRate={}, volume={}",
                     tradeMessage.getSymbol(),
+                    marketSession,
+                    trId,
                     tradeMessage.getCurrentPrice(),
                     tradeMessage.getChangeRate(),
                     tradeMessage.getAccumulatedVolume()
@@ -42,14 +74,29 @@ public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        if (payload.startsWith("0|" + REALTIME_ORDERBOOK_TR_ID + "|")) {
-            KisRealtimeOrderbookMessage orderbookMessage = orderbookMessageParser.parse(payload);
-            stockRealtimeBroadcaster.broadcastOrderbook(orderbookMessage);
-            orderMatchingService.matchByRealtimeOrderbook(orderbookMessage);
+        if (KisRealtimeTrId.isOrderbookTrId(trId)) {
+            KisRealtimeOrderbookMessage orderbookMessage = orderbookMessageParser.parse(payload, marketSession);
+            boolean broadcasted = stockRealtimeBroadcaster.broadcastOrderbook(orderbookMessage);
+
+            if (!broadcasted) {
+                log.debug(
+                        "Invalid KIS realtime orderbook dropped. symbol={}, session={}, trId={}",
+                        orderbookMessage.getSymbol(),
+                        marketSession,
+                        trId
+                );
+                return;
+            }
+
+            if (marketSessionService.isImmediateExecution(marketSession)) {
+                orderMatchingService.matchByRealtimeOrderbook(orderbookMessage);
+            }
 
             log.info(
-                    "KIS realtime orderbook parsed. symbol={}, levels={}, totalAsk={}, totalBid={}",
+                    "KIS realtime orderbook parsed. symbol={}, session={}, trId={}, levels={}, totalAsk={}, totalBid={}",
                     orderbookMessage.getSymbol(),
+                    marketSession,
+                    trId,
                     orderbookMessage.getLevels().size(),
                     orderbookMessage.getTotalAskQuantity(),
                     orderbookMessage.getTotalBidQuantity()
@@ -66,6 +113,15 @@ public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
         log.debug("KIS websocket message={}", payload);
     }
 
+    // 통합/NXT 데이터는 수신 시각의 실제 시장 세션으로, 기존 KRX 데이터는 TR 기준으로 판별한다.
+    private MarketSession resolveMarketSession(String trId) {
+        if (KisRealtimeTrId.isNxtOrUnifiedTrId(trId)) {
+            return marketSessionService.getCurrentSession();
+        }
+
+        return KisRealtimeTrId.resolveMarketSession(trId);
+    }
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         log.info("KIS websocket connected. sessionId={}", session.getId());
@@ -78,6 +134,11 @@ public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, org.springframework.web.socket.CloseStatus status) {
-        log.warn("KIS websocket closed. sessionId={}, status={}", session.getId(), status);
+        if (messageHandlingEnabled.getAsBoolean()) {
+            log.warn("KIS websocket closed. sessionId={}, status={}", session.getId(), status);
+            return;
+        }
+
+        log.info("KIS websocket closed during application shutdown. sessionId={}", session.getId());
     }
 }

@@ -2,7 +2,9 @@
 package com.stock.mockstock.domain.stock.realtime;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.stock.mockstock.global.security.jwt.JwtUtil;
+import com.stock.mockstock.domain.order.enumtype.MarketSession;
+import com.stock.mockstock.domain.order.service.MarketSessionService;
+import com.stock.mockstock.global.security.jwt.JwtTokenValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.socket.CloseStatus;
@@ -17,9 +19,11 @@ import java.util.Map;
 public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper;
-    private final JwtUtil jwtUtil;
+    private final JwtTokenValidator jwtTokenValidator;
     private final StockRealtimeSessionRegistry sessionRegistry;
     private final KisRealtimeWebSocketClient kisRealtimeWebSocketClient;
+    private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
+    private final MarketSessionService marketSessionService;
 
     // 브라우저가 보낸 SUBSCRIBE 메시지를 검증하고 종목 실시간 데이터를 구독한다.
     @Override
@@ -34,7 +38,7 @@ public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        if (request.token() == null || !jwtUtil.validateToken(request.token())) {
+        if (jwtTokenValidator.getValidUser(request.token()).isEmpty()) {
             session.close(CloseStatus.POLICY_VIOLATION);
             return;
         }
@@ -55,10 +59,18 @@ public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
         kisRealtimeWebSocketClient.subscribeTrade(symbol);
         kisRealtimeWebSocketClient.subscribeOrderbook(symbol);
 
+        MarketSession marketSession = marketSessionService.getCurrentSession();
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(Map.of(
                 "type", "SUBSCRIBED",
-                "symbol", symbol
+                "symbol", symbol,
+                "marketSession", marketSession,
+                "marketDisplayName", marketSessionService.getDisplayName(marketSession),
+                "realtimePaused",
+                marketSessionService.isRealtimeSubscriptionPausedSession(marketSession)
         ))));
+
+        // Sends the last valid values immediately so a new page does not start with zero data.
+        stockRealtimeBroadcaster.sendLatestSnapshots(symbol, session);
 
         log.info("Browser realtime subscribed. symbol={}, sessionId={}", symbol, session.getId());
     }
@@ -70,7 +82,11 @@ public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
     }
 
     private String normalizeSymbol(String symbol) {
-        return String.valueOf(symbol)
+        if (symbol == null) {
+            return "";
+        }
+
+        return symbol
                 .trim()
                 .replaceAll("\\s+", "")
                 .toUpperCase();

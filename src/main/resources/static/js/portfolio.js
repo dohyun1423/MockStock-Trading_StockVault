@@ -245,6 +245,7 @@ function renderOpenOrders(openOrders) {
                 <th>미체결</th>
                 <th>상태</th>
                 <th>접수시간</th>
+                <th>수정</th>
                 <th>취소</th>
             </tr>
             </thead>
@@ -280,6 +281,14 @@ function renderOpenOrders(openOrders) {
                     <td>
                         <button
                             type="button"
+                            class="open-order-edit-btn"
+                        >
+                            수정
+                        </button>
+                    </td>
+                    <td>
+                        <button
+                            type="button"
                             class="open-order-cancel-btn"
                             data-order-id="${portfolioEscapeHtml(order.id)}"
                         >
@@ -293,6 +302,7 @@ function renderOpenOrders(openOrders) {
     `;
 
     bindOpenOrderRows();
+    bindOpenOrderEditButtons();
     bindOpenOrderCancelButtons();
 }
 
@@ -433,13 +443,17 @@ function bindOpenOrderCancelButtons() {
     });
 }
 
-// 미체결 주문 행 클릭 시 주문 수정 모달을 연다.
-function bindOpenOrderRows() {
-    const rows = document.querySelectorAll('.open-order-row');
+// 미체결 주문 수정 버튼을 선택한 주문의 수정 모달과 연결한다.
+function bindOpenOrderEditButtons() {
+    const buttons = document.querySelectorAll('.open-order-edit-btn');
 
-    rows.forEach((row) => {
-        row.addEventListener('click', () => {
-            if (typeof openOrderEditModal !== 'function') {
+    buttons.forEach((button) => {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+
+            const row = button.closest('.open-order-row');
+
+            if (!row || typeof openOrderEditModal !== 'function') {
                 return;
             }
 
@@ -453,6 +467,23 @@ function bindOpenOrderRows() {
                 executedQuantity: Number(row.dataset.executedQuantity || 0),
                 remainingQuantity: Number(row.dataset.remainingQuantity || 0)
             });
+        });
+    });
+}
+
+// 미체결 주문 행 클릭 시 해당 종목의 상세화면으로 이동한다.
+function bindOpenOrderRows() {
+    const rows = document.querySelectorAll('.open-order-row');
+
+    rows.forEach((row) => {
+        row.addEventListener('click', () => {
+            const symbol = row.dataset.symbol;
+
+            if (!symbol) {
+                return;
+            }
+
+            window.location.href = `/stocks/detail?keyword=${encodeURIComponent(symbol)}`;
         });
     });
 }

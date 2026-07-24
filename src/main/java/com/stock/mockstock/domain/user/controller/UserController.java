@@ -9,7 +9,6 @@ import com.stock.mockstock.domain.user.dto.SignupRequest;
 import com.stock.mockstock.domain.user.dto.TokenRefreshResponse;
 import com.stock.mockstock.domain.user.dto.UserInfoResponse;
 import com.stock.mockstock.domain.user.service.UserService;
-import com.stock.mockstock.global.security.jwt.JwtUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
-    private final JwtUtil jwtUtil;
 
     // 신규 회원가입 요청을 처리한다.
     @PostMapping("/signup")
@@ -66,7 +64,7 @@ public class UserController {
     // 로그인 사용자가 직접 연장 버튼을 눌렀을 때 새 JWT를 발급한다.
     @PostMapping("/refresh")
     public TokenRefreshResponse refresh(Authentication authentication) {
-        String token = jwtUtil.generateToken(authentication.getName());
+        String token = userService.refreshToken(authentication.getName());
 
         return new TokenRefreshResponse(token);
     }

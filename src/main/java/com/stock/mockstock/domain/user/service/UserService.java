@@ -51,8 +51,9 @@ public class UserService {
                 .cash(10000000L)
                 .build();
 
-        userRepository.save(user);
-        savePasswordHistory(user, encodedPassword);
+        // save가 반환한 영속 상태의 사용자를 비밀번호 이력과 연결한다.
+        User savedUser = userRepository.save(user);
+        savePasswordHistory(savedUser, encodedPassword);
     }
 
     // 이메일과 비밀번호를 검증하고 JWT를 발급한다.
@@ -64,7 +65,15 @@ public class UserService {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
 
-        return jwtUtil.generateToken(user.getEmail());
+        return jwtUtil.generateToken(user.getEmail(), user.getTokenVersion());
+    }
+
+    // 현재 사용자 인증 버전을 담은 새 JWT를 발급한다.
+    @Transactional(readOnly = true)
+    public String refreshToken(String email) {
+        User user = getUser(email);
+
+        return jwtUtil.generateToken(user.getEmail(), user.getTokenVersion());
     }
 
     // 현재 로그인한 사용자의 기본 정보를 조회한다.
@@ -109,19 +118,7 @@ public class UserService {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
         }
 
-        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("현재 사용 중인 비밀번호로는 변경할 수 없습니다.");
-        }
-
-        if (isPreviouslyUsedPassword(user, request.getNewPassword())) {
-            throw new IllegalArgumentException("이전에 사용한 비밀번호로는 변경할 수 없습니다.");
-        }
-
-        savePasswordHistory(user, user.getPassword());
-
-        String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
-        user.updatePassword(encodedNewPassword);
-        savePasswordHistory(user, encodedNewPassword);
+        changePassword(user, request.getNewPassword());
         auditLogService.record(
                 email,
                 "PASSWORD_UPDATED",
@@ -130,6 +127,28 @@ public class UserService {
                 "사용자 비밀번호 변경",
                 null
         );
+    }
+
+    // 유효한 이메일 재설정 토큰을 확인한 사용자의 비밀번호를 현재 비밀번호 없이 변경한다.
+    public void resetPassword(String email, String newPassword) {
+        User user = getUser(email);
+        changePassword(user, newPassword);
+    }
+
+    // 새 비밀번호의 현재·과거 사용 여부를 검사하고 암호화, 이력 저장, JWT 무효화를 수행한다.
+    private void changePassword(User user, String newPassword) {
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new IllegalArgumentException("현재 사용 중인 비밀번호로는 변경할 수 없습니다.");
+        }
+
+        if (isPreviouslyUsedPassword(user, newPassword)) {
+            throw new IllegalArgumentException("이전에 사용한 비밀번호로는 변경할 수 없습니다.");
+        }
+
+        String encodedNewPassword = passwordEncoder.encode(newPassword);
+        user.updatePassword(encodedNewPassword);
+        user.increaseTokenVersion();
+        savePasswordHistory(user, encodedNewPassword);
     }
 
     // email을 기준으로 사용자를 조회한다.
