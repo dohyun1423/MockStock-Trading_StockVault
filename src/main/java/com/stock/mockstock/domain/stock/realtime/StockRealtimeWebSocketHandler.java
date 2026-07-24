@@ -20,6 +20,7 @@ public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
     private final JwtTokenValidator jwtTokenValidator;
     private final StockRealtimeSessionRegistry sessionRegistry;
     private final KisRealtimeWebSocketClient kisRealtimeWebSocketClient;
+    private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
 
     // 브라우저가 보낸 SUBSCRIBE 메시지를 검증하고 종목 실시간 데이터를 구독한다.
     @Override
@@ -60,6 +61,9 @@ public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
                 "symbol", symbol
         ))));
 
+        // Sends the last valid values immediately so a new page does not start with zero data.
+        stockRealtimeBroadcaster.sendLatestSnapshots(symbol, session);
+
         log.info("Browser realtime subscribed. symbol={}, sessionId={}", symbol, session.getId());
     }
 
@@ -70,7 +74,11 @@ public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
     }
 
     private String normalizeSymbol(String symbol) {
-        return String.valueOf(symbol)
+        if (symbol == null) {
+            return "";
+        }
+
+        return symbol
                 .trim()
                 .replaceAll("\\s+", "")
                 .toUpperCase();

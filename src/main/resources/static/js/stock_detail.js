@@ -7,9 +7,14 @@ let detailMyStockLoading = false;
 let detailOrderbookLoaded = false;
 let detailOrderbookLoading = false;
 let detailRealtimeSocket = null;
+let detailRealtimeSymbol = null;
+let detailRealtimeReconnectTimer = null;
+let detailRealtimeReconnectAttempt = 0;
 let detailLatestOrderbook = null;
 let detailChartHistories = [];
 let detailActiveChartPeriod = '1D';
+
+const DETAIL_REALTIME_RECONNECT_MAX_DELAY = 30000;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const authenticated = await waitAuthReady();
@@ -104,43 +109,127 @@ async function initStockDetail() {
 
 // 상세페이지에서 현재 종목의 실시간 체결가와 호가 WebSocket을 구독한다.
 function connectDetailRealtimeSocket(symbol) {
+    const normalizedSymbol = normalizeStockSymbol(symbol);
     const token = localStorage.getItem('accessToken');
 
-    if (!symbol || !token) {
+    if (!normalizedSymbol || !token || getTokenRemainingMs(token) <= 0) {
         return;
     }
 
-    if (detailRealtimeSocket && detailRealtimeSocket.readyState === WebSocket.OPEN) {
-        detailRealtimeSocket.send(JSON.stringify({
-            type: 'SUBSCRIBE',
-            symbol,
-            token
-        }));
+    if (
+        (
+            detailRealtimeSocket?.readyState === WebSocket.OPEN
+            || detailRealtimeSocket?.readyState === WebSocket.CONNECTING
+        )
+        && detailRealtimeSymbol === normalizedSymbol
+    ) {
+        return;
+    }
+
+    disconnectDetailRealtimeSocket();
+    detailRealtimeSymbol = normalizedSymbol;
+    openDetailRealtimeSocket();
+}
+
+// 저장된 상세 종목을 기준으로 실시간 WebSocket 연결을 생성한다.
+function openDetailRealtimeSocket() {
+    const symbol = detailRealtimeSymbol;
+    const token = localStorage.getItem('accessToken');
+
+    if (!symbol || !token || getTokenRemainingMs(token) <= 0) {
         return;
     }
 
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    detailRealtimeSocket = new WebSocket(`${protocol}://${window.location.host}/ws/stocks`);
+    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/stocks`);
 
-    detailRealtimeSocket.onopen = () => {
-        detailRealtimeSocket.send(JSON.stringify({
+    detailRealtimeSocket = socket;
+
+    socket.onopen = () => {
+        detailRealtimeReconnectAttempt = 0;
+
+        socket.send(JSON.stringify({
             type: 'SUBSCRIBE',
             symbol,
             token
         }));
     };
 
-    detailRealtimeSocket.onmessage = (event) => {
-        const message = JSON.parse(event.data);
+    socket.onmessage = (event) => {
+        if (socket !== detailRealtimeSocket) {
+            return;
+        }
 
-        handleDetailRealtimeMessage(message);
+        try {
+            handleDetailRealtimeMessage(JSON.parse(event.data));
+        } catch {
+        }
     };
 
-    detailRealtimeSocket.onclose = () => {
+    socket.onclose = (event) => {
+        if (socket !== detailRealtimeSocket) {
+            return;
+        }
+
+        detailRealtimeSocket = null;
+
+        if (event.code === 1008) {
+            redirectToLogin();
+            return;
+        }
+
+        if (event.code === 1003) {
+            return;
+        }
+
+        scheduleDetailRealtimeReconnect(symbol);
     };
 
-    detailRealtimeSocket.onerror = () => {
+    socket.onerror = () => {
     };
+}
+
+// 상세 WebSocket 종료 후 재시도 횟수에 따라 현재 종목을 자동 재구독한다.
+function scheduleDetailRealtimeReconnect(symbol) {
+    const token = localStorage.getItem('accessToken');
+
+    if (
+        detailRealtimeReconnectTimer
+        || !token
+        || getTokenRemainingMs(token) <= 0
+        || normalizeStockSymbol(symbol) !== normalizeStockSymbol(detailRealtimeSymbol)
+        || normalizeStockSymbol(symbol) !== normalizeStockSymbol(currentStock?.symbol)
+    ) {
+        return;
+    }
+
+    const delay = Math.min(
+        1000 * (2 ** detailRealtimeReconnectAttempt),
+        DETAIL_REALTIME_RECONNECT_MAX_DELAY
+    );
+
+    detailRealtimeReconnectAttempt += 1;
+    detailRealtimeReconnectTimer = window.setTimeout(() => {
+        detailRealtimeReconnectTimer = null;
+        openDetailRealtimeSocket();
+    }, delay);
+}
+
+// 상세페이지를 벗어나거나 구독 종목이 바뀔 때 기존 WebSocket과 재연결 예약을 정리한다.
+function disconnectDetailRealtimeSocket() {
+    if (detailRealtimeReconnectTimer) {
+        window.clearTimeout(detailRealtimeReconnectTimer);
+        detailRealtimeReconnectTimer = null;
+    }
+
+    if (detailRealtimeSocket) {
+        detailRealtimeSocket.onclose = null;
+        detailRealtimeSocket.close();
+    }
+
+    detailRealtimeSocket = null;
+    detailRealtimeSymbol = null;
+    detailRealtimeReconnectAttempt = 0;
 }
 
 // 서버 WebSocket에서 받은 실시간 메시지를 타입별로 화면에 반영한다.

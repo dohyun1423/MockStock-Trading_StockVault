@@ -6,6 +6,13 @@ let mainSelectedStock = null;
 let mainSelectedQuote = null;
 let mainSelectedHistories = [];
 let mainSelectedPeriod = '1D';
+let mainRealtimeSocket = null;
+let mainRealtimeSymbol = null;
+let mainLatestOrderbook = null;
+let mainRealtimeReconnectTimer = null;
+let mainRealtimeReconnectAttempt = 0;
+
+const MAIN_REALTIME_RECONNECT_MAX_DELAY = 30000;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const authenticated = await waitAuthReady();
@@ -220,9 +227,11 @@ async function selectWatchlistStock(stockName, symbol = null) {
         : await fetchStockDetail(stockName);
 
     if (!stock) {
+        disconnectMainRealtimeSocket();
         mainSelectedStock = null;
         mainSelectedQuote = null;
         mainSelectedHistories = [];
+        mainLatestOrderbook = null;
         mainSelectedPeriod = '1D';
         mainActiveMarketView = 'chart';
         renderMainChart(stockName, [], null, '1D');
@@ -238,11 +247,283 @@ async function selectWatchlistStock(stockName, symbol = null) {
     mainSelectedStock = stock;
     mainSelectedQuote = quote;
     mainSelectedHistories = priceHistories;
+    mainLatestOrderbook = null;
     mainSelectedPeriod = '1D';
     mainActiveMarketView = 'chart';
 
     renderMainChart(stock.name, priceHistories, stock.symbol, '1D', quote);
     renderStockSideInfo(stock.name, stock, quote);
+    connectMainRealtimeSocket(stock.symbol);
+}
+
+// 메인에서 선택한 종목의 실시간 체결가와 호가를 서버 WebSocket으로 구독한다.
+function connectMainRealtimeSocket(symbol) {
+    const normalizedSymbol = normalizeMainSymbol(symbol);
+    const token = localStorage.getItem('accessToken');
+
+    if (!normalizedSymbol || !token || getTokenRemainingMs(token) <= 0) {
+        return;
+    }
+
+    if (
+        (
+            mainRealtimeSocket?.readyState === WebSocket.OPEN
+            || mainRealtimeSocket?.readyState === WebSocket.CONNECTING
+        )
+        && mainRealtimeSymbol === normalizedSymbol
+    ) {
+        return;
+    }
+
+    disconnectMainRealtimeSocket();
+    mainRealtimeSymbol = normalizedSymbol;
+    openMainRealtimeSocket();
+}
+
+// 저장된 현재 종목을 기준으로 메인 실시간 WebSocket 연결을 생성한다.
+function openMainRealtimeSocket() {
+    const symbol = mainRealtimeSymbol;
+    const token = localStorage.getItem('accessToken');
+
+    if (!symbol || !token || getTokenRemainingMs(token) <= 0) {
+        return;
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/stocks`);
+
+    mainRealtimeSocket = socket;
+
+    socket.onopen = () => {
+        mainRealtimeReconnectAttempt = 0;
+
+        socket.send(JSON.stringify({
+            type: 'SUBSCRIBE',
+            symbol,
+            token
+        }));
+    };
+
+    socket.onmessage = (event) => {
+        if (socket !== mainRealtimeSocket) {
+            return;
+        }
+
+        try {
+            handleMainRealtimeMessage(JSON.parse(event.data));
+        } catch {
+        }
+    };
+
+    socket.onclose = (event) => {
+        if (socket !== mainRealtimeSocket) {
+            return;
+        }
+
+        mainRealtimeSocket = null;
+
+        if (event.code === 1008) {
+            redirectToLogin();
+            return;
+        }
+
+        if (event.code === 1003) {
+            return;
+        }
+
+        scheduleMainRealtimeReconnect(symbol);
+    };
+
+    socket.onerror = () => {
+    };
+}
+
+// 연결 종료 후 재시도 횟수에 따라 대기 시간을 늘려 현재 종목을 다시 구독한다.
+function scheduleMainRealtimeReconnect(symbol) {
+    const token = localStorage.getItem('accessToken');
+
+    if (
+        mainRealtimeReconnectTimer
+        || !token
+        || getTokenRemainingMs(token) <= 0
+        || normalizeMainSymbol(symbol) !== normalizeMainSymbol(mainRealtimeSymbol)
+        || normalizeMainSymbol(symbol) !== normalizeMainSymbol(mainSelectedStock?.symbol)
+    ) {
+        return;
+    }
+
+    const delay = Math.min(
+        1000 * (2 ** mainRealtimeReconnectAttempt),
+        MAIN_REALTIME_RECONNECT_MAX_DELAY
+    );
+
+    mainRealtimeReconnectAttempt += 1;
+    mainRealtimeReconnectTimer = window.setTimeout(() => {
+        mainRealtimeReconnectTimer = null;
+        openMainRealtimeSocket();
+    }, delay);
+}
+
+// 관심종목 변경 시 이전 종목의 브라우저 WebSocket 연결을 정리한다.
+function disconnectMainRealtimeSocket() {
+    if (mainRealtimeReconnectTimer) {
+        window.clearTimeout(mainRealtimeReconnectTimer);
+        mainRealtimeReconnectTimer = null;
+    }
+
+    if (mainRealtimeSocket) {
+        mainRealtimeSocket.onclose = null;
+        mainRealtimeSocket.close();
+    }
+
+    mainRealtimeSocket = null;
+    mainRealtimeSymbol = null;
+    mainRealtimeReconnectAttempt = 0;
+}
+
+// 서버에서 받은 실시간 메시지를 체결가와 호가로 구분해 메인 화면에 반영한다.
+function handleMainRealtimeMessage(message) {
+    if (!message?.type || message.type === 'SUBSCRIBED') {
+        return;
+    }
+
+    if (message.type === 'TRADE') {
+        applyMainRealtimeTrade(message.data);
+        return;
+    }
+
+    if (message.type === 'ORDERBOOK') {
+        applyMainRealtimeOrderbook(message.data);
+    }
+}
+
+// 실시간 체결가로 메인 종목 정보, 1D 차트, 호가 현재가를 갱신한다.
+function applyMainRealtimeTrade(trade) {
+    if (
+        !trade
+        || normalizeMainSymbol(trade.symbol) !== normalizeMainSymbol(mainSelectedStock?.symbol)
+    ) {
+        return;
+    }
+
+    mainSelectedQuote = {
+        ...mainSelectedQuote,
+        currentPrice: trade.currentPrice,
+        changePrice: trade.changePrice,
+        changeRate: trade.changeRate,
+        openPrice: trade.openPrice,
+        highPrice: trade.highPrice,
+        lowPrice: trade.lowPrice,
+        volume: trade.accumulatedVolume
+    };
+
+    renderStockSideInfo(mainSelectedStock.name, mainSelectedStock, mainSelectedQuote);
+    updateMainRealtimeChartPoint(trade);
+
+    if (!mainLatestOrderbook) {
+        return;
+    }
+
+    mainLatestOrderbook = {
+        ...mainLatestOrderbook,
+        currentPrice: trade.currentPrice,
+        openPrice: trade.openPrice,
+        highPrice: trade.highPrice,
+        lowPrice: trade.lowPrice,
+        volume: trade.accumulatedVolume
+    };
+
+    if (mainActiveMarketView === 'orderbook') {
+        renderMainOrderbook(mainSelectedStock, mainSelectedQuote, mainLatestOrderbook);
+    }
+}
+
+// 실시간 호가를 메인 호가 화면에서 사용하는 형식으로 변환하고 저장한다.
+function applyMainRealtimeOrderbook(orderbook) {
+    if (
+        !orderbook
+        || normalizeMainSymbol(orderbook.symbol) !== normalizeMainSymbol(mainSelectedStock?.symbol)
+    ) {
+        return;
+    }
+
+    const currentPrice = Number(mainSelectedQuote?.currentPrice || mainSelectedStock?.currentPrice || 0);
+    const changePrice = Number(mainSelectedQuote?.changePrice || 0);
+    const basePrice = Number(mainLatestOrderbook?.basePrice || currentPrice - changePrice || currentPrice);
+    const baseOrderbook = mainLatestOrderbook || {
+        symbol: orderbook.symbol,
+        currentPrice,
+        basePrice,
+        openPrice: Number(mainSelectedQuote?.openPrice || 0),
+        highPrice: Number(mainSelectedQuote?.highPrice || 0),
+        lowPrice: Number(mainSelectedQuote?.lowPrice || 0),
+        volume: Number(mainSelectedQuote?.volume || 0)
+    };
+
+    mainLatestOrderbook = {
+        ...baseOrderbook,
+        symbol: orderbook.symbol,
+        totalAskQuantity: orderbook.totalAskQuantity,
+        totalBidQuantity: orderbook.totalBidQuantity,
+        levels: (orderbook.levels || []).map((level) => ({
+            level: level.level,
+            askPrice: level.askPrice,
+            askQuantity: level.askQuantity,
+            askRate: calculateMainOrderbookRate(level.askPrice, basePrice),
+            bidPrice: level.bidPrice,
+            bidQuantity: level.bidQuantity,
+            bidRate: calculateMainOrderbookRate(level.bidPrice, basePrice)
+        }))
+    };
+
+    if (mainActiveMarketView === 'orderbook') {
+        renderMainOrderbook(mainSelectedStock, mainSelectedQuote, mainLatestOrderbook);
+    }
+}
+
+// 실시간 체결가를 메인 1D 차트의 마지막 가격 지점에 반영한다.
+function updateMainRealtimeChartPoint(trade) {
+    if (mainSelectedPeriod !== '1D' || mainSelectedHistories.length === 0) {
+        return;
+    }
+
+    const latestIndex = mainSelectedHistories.length - 1;
+    const latest = mainSelectedHistories[latestIndex];
+    const currentPrice = Number(trade.currentPrice || 0);
+
+    if (currentPrice <= 0) {
+        return;
+    }
+
+    mainSelectedHistories[latestIndex] = {
+        ...latest,
+        label: formatMainRealtimeTradeTime(trade.tradeTime) || latest.label,
+        closePrice: currentPrice,
+        highPrice: Math.max(Number(latest.highPrice || currentPrice), currentPrice),
+        lowPrice: Math.min(Number(latest.lowPrice || currentPrice), currentPrice),
+        volume: trade.accumulatedVolume || latest.volume
+    };
+
+    if (mainActiveMarketView === 'chart') {
+        renderMainChart(
+            mainSelectedStock.name,
+            mainSelectedHistories,
+            mainSelectedStock.symbol,
+            mainSelectedPeriod,
+            mainSelectedQuote
+        );
+    }
+}
+
+// KIS HHmmss 체결 시각을 메인 차트의 HH:mm:ss 라벨로 변환한다.
+function formatMainRealtimeTradeTime(tradeTime) {
+    const value = String(tradeTime || '');
+
+    if (value.length !== 6) {
+        return '';
+    }
+
+    return `${value.substring(0, 2)}:${value.substring(2, 4)}:${value.substring(4, 6)}`;
 }
 
 async function fetchStockDetail(stockName) {
@@ -453,6 +734,12 @@ function bindMainMarketViewButtons() {
             }
 
             const requestedSymbol = normalizeMainSymbol(stock.symbol);
+
+            if (mainLatestOrderbook?.levels?.length > 0) {
+                renderMainOrderbook(stock, mainSelectedQuote, mainLatestOrderbook);
+                return;
+            }
+
             renderMainOrderbook(stock, mainSelectedQuote, null, true);
 
             const orderbook = await fetchMainStockOrderbook(stock.symbol);
@@ -464,7 +751,8 @@ function bindMainMarketViewButtons() {
                 return;
             }
 
-            renderMainOrderbook(stock, mainSelectedQuote, orderbook);
+            mainLatestOrderbook = orderbook;
+            renderMainOrderbook(stock, mainSelectedQuote, mainLatestOrderbook);
         });
     });
 }

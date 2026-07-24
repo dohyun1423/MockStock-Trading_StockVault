@@ -44,8 +44,8 @@ public class KisRealtimeWebSocketClient {
     public void subscribeTrade(String symbol) {
         MarketSession marketSession = marketSessionService.getCurrentSession();
 
-        if (marketSessionService.isAfterMarketPollingSession(marketSession)) {
-            log.debug("KIS realtime trade delegated to REST polling. symbol={}, session={}", symbol, marketSession);
+        if (marketSessionService.isRealtimeSubscriptionPausedSession(marketSession)) {
+            log.debug("KIS realtime trade subscription paused. symbol={}, session={}", symbol, marketSession);
             return;
         }
 
@@ -58,8 +58,8 @@ public class KisRealtimeWebSocketClient {
     public void subscribeOrderbook(String symbol) {
         MarketSession marketSession = marketSessionService.getCurrentSession();
 
-        if (marketSessionService.isAfterMarketPollingSession(marketSession)) {
-            log.debug("KIS realtime orderbook delegated to REST polling. symbol={}, session={}", symbol, marketSession);
+        if (marketSessionService.isRealtimeSubscriptionPausedSession(marketSession)) {
+            log.debug("KIS realtime orderbook subscription paused. symbol={}, session={}", symbol, marketSession);
             return;
         }
 

@@ -30,7 +30,17 @@ public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
 
         if (KisRealtimeTrId.isTradeTrId(trId)) {
             KisRealtimeTradeMessage tradeMessage = tradeMessageParser.parse(payload, marketSession);
-            stockRealtimeBroadcaster.broadcastTrade(tradeMessage);
+            boolean broadcasted = stockRealtimeBroadcaster.broadcastTrade(tradeMessage);
+
+            if (!broadcasted) {
+                log.debug(
+                        "Invalid KIS realtime trade dropped. symbol={}, session={}, trId={}",
+                        tradeMessage.getSymbol(),
+                        marketSession,
+                        trId
+                );
+                return;
+            }
 
             log.info(
                     "KIS realtime trade parsed. symbol={}, session={}, trId={}, price={}, changeRate={}, volume={}",
@@ -46,7 +56,18 @@ public class KisRealtimeWebSocketHandler extends TextWebSocketHandler {
 
         if (KisRealtimeTrId.isOrderbookTrId(trId)) {
             KisRealtimeOrderbookMessage orderbookMessage = orderbookMessageParser.parse(payload, marketSession);
-            stockRealtimeBroadcaster.broadcastOrderbook(orderbookMessage);
+            boolean broadcasted = stockRealtimeBroadcaster.broadcastOrderbook(orderbookMessage);
+
+            if (!broadcasted) {
+                log.debug(
+                        "Invalid KIS realtime orderbook dropped. symbol={}, session={}, trId={}",
+                        orderbookMessage.getSymbol(),
+                        marketSession,
+                        trId
+                );
+                return;
+            }
+
             orderMatchingService.matchByRealtimeOrderbook(orderbookMessage);
 
             log.info(

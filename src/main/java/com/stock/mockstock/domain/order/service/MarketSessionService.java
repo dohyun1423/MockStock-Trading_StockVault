@@ -88,8 +88,8 @@ public class MarketSessionService {
                 || session == MarketSession.RESERVATION;
     }
 
-    // KIS WebSocket 대신 시간외 REST 폴링을 사용해야 하는 세션인지 확인한다.
-    public boolean isAfterMarketPollingSession(MarketSession session) {
+    // KIS가 지원하지 않는 전환 구간에서 신규 실시간 구독을 잠시 중지할지 확인한다.
+    public boolean isRealtimeSubscriptionPausedSession(MarketSession session) {
         return session == MarketSession.AFTER_MARKET_WAIT
                 || session == MarketSession.AFTER_MARKET_CLOSING_PRICE;
     }
