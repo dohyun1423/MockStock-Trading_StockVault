@@ -23,7 +23,7 @@ public class TradeService {
     public List<TradeResponse> getMyTrades(String email) {
         User user = getUser(email);
 
-        return tradeRepository.findAllByUserOrderByCreatedAtDesc(user)
+        return tradeRepository.findTop100ByUserOrderByCreatedAtDesc(user)
                 .stream()
                 .map(TradeResponse::from)
                 .toList();
@@ -37,7 +37,7 @@ public class TradeService {
 
         User user = getUser(email);
 
-        return tradeRepository.findAllByUserAndStockSymbolOrderByCreatedAtDesc(user, symbol.trim())
+        return tradeRepository.findTop100ByUserAndStockSymbolOrderByCreatedAtDesc(user, symbol.trim())
                 .stream()
                 .map(TradeResponse::from)
                 .toList();

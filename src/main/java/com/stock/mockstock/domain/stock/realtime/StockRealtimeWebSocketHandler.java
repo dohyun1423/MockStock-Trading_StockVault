@@ -55,7 +55,10 @@ public class StockRealtimeWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        sessionRegistry.subscribe(symbol, session);
+        if (!sessionRegistry.subscribe(symbol, session)) {
+            session.close(CloseStatus.POLICY_VIOLATION);
+            return;
+        }
         kisRealtimeWebSocketClient.subscribeTrade(symbol);
         kisRealtimeWebSocketClient.subscribeOrderbook(symbol);
 

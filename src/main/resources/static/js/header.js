@@ -7,6 +7,7 @@ let orderToastSequence = 0;
 window.authReady = initializeAuth();
 
 document.addEventListener('DOMContentLoaded', async () => {
+    bindPrimaryNavigation();
     await window.authReady;
 
     bindStockSearch();
@@ -14,6 +15,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     bindTokenRefreshButton();
     connectOrderNotificationSocket();
 });
+
+// 현재 경로에 맞는 상단 주요 메뉴를 활성화한다.
+function bindPrimaryNavigation() {
+    const currentPath = window.location.pathname;
+
+    document.querySelectorAll('[data-primary-nav]').forEach((link) => {
+        const target = link.dataset.primaryNav;
+        const active = target === 'portfolio'
+                ? currentPath === '/portfolio'
+                : currentPath === '/main' || currentPath === '/stocks/detail';
+
+        link.classList.toggle('active', active);
+        if (active) {
+            link.setAttribute('aria-current', 'page');
+        }
+    });
+}
 
 // 저장된 JWT로 로그인 상태를 확인하고 헤더 사용자 정보를 초기화한다.
 async function initializeAuth() {

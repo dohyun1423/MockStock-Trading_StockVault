@@ -12,6 +12,7 @@ import com.stock.mockstock.domain.user.enumtype.Role;
 import com.stock.mockstock.domain.user.repository.UserPasswordHistoryRepository;
 import com.stock.mockstock.domain.user.repository.UserRepository;
 import com.stock.mockstock.global.audit.AuditLogService;
+import com.stock.mockstock.global.security.LoginAttemptService;
 import com.stock.mockstock.global.security.jwt.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -30,23 +32,27 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuditLogService auditLogService;
+    private final LoginAttemptService loginAttemptService;
 
     // 신규 회원을 생성하고 초기 비밀번호도 재사용 방지 이력에 저장한다.
     public void signup(SignupRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        String email = normalizeEmail(request.getEmail());
+        String nickname = normalizeNickname(request.getNickname());
+
+        if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("이미 존재하는 이메일입니다.");
         }
 
-        if (userRepository.existsByNickname(request.getNickname())) {
+        if (userRepository.existsByNickname(nickname)) {
             throw new IllegalArgumentException("이미 존재하는 닉네임입니다.");
         }
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
         User user = User.builder()
-                .email(request.getEmail())
+                .email(email)
                 .password(encodedPassword)
-                .nickname(request.getNickname())
+                .nickname(nickname)
                 .role(Role.USER)
                 .cash(10000000L)
                 .build();
@@ -54,17 +60,44 @@ public class UserService {
         // save가 반환한 영속 상태의 사용자를 비밀번호 이력과 연결한다.
         User savedUser = userRepository.save(user);
         savePasswordHistory(savedUser, encodedPassword);
+        auditLogService.record(
+                email,
+                "USER_SIGNED_UP",
+                "USER",
+                savedUser.getId() == null ? null : String.valueOf(savedUser.getId()),
+                "신규 사용자 가입",
+                null
+        );
     }
 
     // 이메일과 비밀번호를 검증하고 JWT를 발급한다.
     public String login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 이메일입니다."));
+        String email = normalizeEmail(request.getEmail());
+        loginAttemptService.validateLoginAllowed(email);
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            loginAttemptService.recordFailure(email);
+            auditLogService.record(
+                    email,
+                    "LOGIN_FAILED",
+                    "USER",
+                    user == null || user.getId() == null ? null : String.valueOf(user.getId()),
+                    "사용자 로그인 실패",
+                    null
+            );
+            throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
 
+        loginAttemptService.recordSuccess(email);
+        auditLogService.record(
+                email,
+                "LOGIN_SUCCEEDED",
+                "USER",
+                user.getId() == null ? null : String.valueOf(user.getId()),
+                "사용자 로그인 성공",
+                null
+        );
         return jwtUtil.generateToken(user.getEmail(), user.getTokenVersion());
     }
 
@@ -164,6 +197,14 @@ public class UserService {
         }
 
         return nickname.trim();
+    }
+
+    // 이메일 비교와 JWT subject가 일관되도록 공백을 제거하고 소문자로 정규화한다.
+    private String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("이메일을 입력해 주세요.");
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     // 새 비밀번호가 기존 비밀번호 이력에 포함되는지 확인한다.

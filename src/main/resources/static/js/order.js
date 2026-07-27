@@ -10,7 +10,8 @@ let orderState = {
     holdingQuantity: 0,
     marketSession: null,
     immediateExecution: false,
-    reservationAvailable: false
+    reservationAvailable: false,
+    priceFollowsCurrent: true
 };
 
 let editOrderState = {
@@ -23,14 +24,24 @@ let editOrderState = {
     executedQuantity: 0
 };
 
+let orderRealtimeSocket = null;
+let orderRealtimeSymbol = '';
+let orderRealtimeReconnectTimer = null;
+let orderRealtimeReconnectAttempt = 0;
+const ORDER_REALTIME_RECONNECT_MAX_DELAY = 10000;
+
 // 주문 모달을 열고 선택한 종목의 주문 정보를 초기화한다.
 async function openOrderModal(symbol, stockName, orderType = 'BUY') {
+    disconnectOrderRealtimeSocket();
+
     orderState.symbol = symbol;
     orderState.stockName = stockName;
     orderState.orderType = orderType;
+    orderState.priceFollowsCurrent = true;
 
     setOrderMessage('');
     setOrderText('order-stock-name', stockName || symbol || '-');
+    updateOrderRealtimeStatus('connecting', '연결 중');
     setOrderQuantity(1);
     setOrderPrice(0);
 
@@ -42,6 +53,7 @@ async function openOrderModal(symbol, stockName, orderType = 'BUY') {
 
     setOrderType(orderType);
     await loadOrderData();
+    connectOrderRealtimeSocket(symbol);
     updateOrderTotalAmount();
 }
 
@@ -52,6 +64,8 @@ function closeOrderModal() {
     if (overlay) {
         overlay.classList.remove('active');
     }
+
+    disconnectOrderRealtimeSocket();
 }
 
 // 미체결 주문 수정 모달을 열고 선택한 주문의 현재 값을 채운다.
@@ -134,6 +148,7 @@ async function loadOrderData() {
     orderState.currentPrice = Number(quote?.currentPrice || 0);
     orderState.orderPrice = orderState.currentPrice;
     orderState.priceStep = getOrderPriceStep(orderState.currentPrice);
+    orderState.priceFollowsCurrent = true;
     orderState.cashBalance = Number(portfolio?.availableCash ?? portfolio?.cashBalance ?? 0);
     orderState.marketSession = session?.marketSession || null;
     orderState.immediateExecution = !!session?.immediateExecution;
@@ -186,6 +201,208 @@ async function fetchOrderPortfolio() {
     }
 
     return await response.json();
+}
+
+// 주문 모달이 열린 동안 선택 종목의 실시간 체결가를 구독한다.
+function connectOrderRealtimeSocket(symbol) {
+    const normalizedSymbol = normalizeOrderSymbol(symbol);
+    const token = localStorage.getItem('accessToken');
+
+    if (!normalizedSymbol || !token || !isOrderModalOpen()) {
+        return;
+    }
+
+    disconnectOrderRealtimeSocket();
+    orderRealtimeSymbol = normalizedSymbol;
+    updateOrderRealtimeStatus('connecting', '연결 중');
+    openOrderRealtimeSocket();
+}
+
+// 현재 주문 종목을 기준으로 서버 실시간 WebSocket 연결을 생성한다.
+function openOrderRealtimeSocket() {
+    const token = localStorage.getItem('accessToken');
+
+    if (!orderRealtimeSymbol || !token || !isOrderModalOpen()) {
+        return;
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const socket = new WebSocket(`${protocol}://${window.location.host}/ws/stocks`);
+
+    orderRealtimeSocket = socket;
+    updateOrderRealtimeStatus('connecting', '연결 중');
+
+    socket.onopen = () => {
+        if (socket !== orderRealtimeSocket) {
+            return;
+        }
+
+        orderRealtimeReconnectAttempt = 0;
+        socket.send(JSON.stringify({
+            type: 'SUBSCRIBE',
+            symbol: orderRealtimeSymbol,
+            token
+        }));
+    };
+
+    socket.onmessage = (event) => {
+        if (socket !== orderRealtimeSocket) {
+            return;
+        }
+
+        try {
+            handleOrderRealtimeMessage(JSON.parse(event.data));
+        } catch {
+        }
+    };
+
+    socket.onclose = (event) => {
+        if (socket !== orderRealtimeSocket) {
+            return;
+        }
+
+        orderRealtimeSocket = null;
+
+        if (event.code === 1008) {
+            if (typeof redirectToLogin === 'function') {
+                redirectToLogin();
+            }
+            return;
+        }
+
+        if (!isOrderModalOpen()) {
+            return;
+        }
+
+        updateOrderRealtimeStatus('reconnecting', '재연결 중');
+        scheduleOrderRealtimeReconnect();
+    };
+
+    socket.onerror = () => {
+        socket.close();
+    };
+}
+
+// 실시간 구독 응답과 체결 메시지를 주문 모달 상태에 반영한다.
+function handleOrderRealtimeMessage(message) {
+    if (!message?.type || !isOrderModalOpen()) {
+        return;
+    }
+
+    if (message.type === 'SUBSCRIBED') {
+        if (message.realtimePaused) {
+            updateOrderRealtimeStatus('snapshot', '마지막 값');
+            return;
+        }
+
+        if (message.marketSession === 'CLOSED' || message.marketSession === 'RESERVATION') {
+            updateOrderRealtimeStatus('closed', message.marketDisplayName || '장 종료');
+            return;
+        }
+
+        updateOrderRealtimeStatus('live', '실시간');
+        return;
+    }
+
+    if (message.type !== 'TRADE') {
+        return;
+    }
+
+    applyOrderRealtimeTrade(message.data);
+    updateOrderRealtimeStatus(
+        message.snapshot ? 'snapshot' : 'live',
+        message.snapshot ? '마지막 값' : formatOrderRealtimeTime(message.data?.tradeTime)
+    );
+}
+
+// 실시간 현재가를 표시하고 사용자가 지정가를 수정하지 않은 경우 주문가격도 함께 갱신한다.
+function applyOrderRealtimeTrade(trade) {
+    const currentPrice = Number(trade?.currentPrice || 0);
+
+    if (currentPrice <= 0) {
+        return;
+    }
+
+    orderState.currentPrice = currentPrice;
+    orderState.priceStep = getOrderPriceStep(currentPrice);
+    setOrderText('order-current-price', `${formatOrderNumber(currentPrice)}원`);
+
+    if (orderState.priceFollowsCurrent) {
+        setOrderPrice(currentPrice);
+        updateOrderTotalAmount();
+        updateOrderPriceStepLabel();
+    }
+}
+
+// 주문 모달이 열린 상태에서 끊긴 실시간 연결을 지수 지연 방식으로 다시 시도한다.
+function scheduleOrderRealtimeReconnect() {
+    if (orderRealtimeReconnectTimer || !orderRealtimeSymbol || !isOrderModalOpen()) {
+        return;
+    }
+
+    const delay = Math.min(
+        1000 * (2 ** orderRealtimeReconnectAttempt),
+        ORDER_REALTIME_RECONNECT_MAX_DELAY
+    );
+
+    orderRealtimeReconnectAttempt += 1;
+    orderRealtimeReconnectTimer = window.setTimeout(() => {
+        orderRealtimeReconnectTimer = null;
+        openOrderRealtimeSocket();
+    }, delay);
+}
+
+// 주문 모달이 닫히거나 종목이 바뀔 때 전용 WebSocket과 재연결 예약을 정리한다.
+function disconnectOrderRealtimeSocket() {
+    if (orderRealtimeReconnectTimer) {
+        window.clearTimeout(orderRealtimeReconnectTimer);
+        orderRealtimeReconnectTimer = null;
+    }
+
+    if (orderRealtimeSocket) {
+        orderRealtimeSocket.onclose = null;
+        orderRealtimeSocket.close();
+    }
+
+    orderRealtimeSocket = null;
+    orderRealtimeSymbol = '';
+    orderRealtimeReconnectAttempt = 0;
+}
+
+// 현재 주문 모달이 화면에 열려 있는지 확인한다.
+function isOrderModalOpen() {
+    return document.getElementById('order-modal-overlay')?.classList.contains('active') === true;
+}
+
+// 주문 종목코드를 실시간 구독에 사용할 동일한 형식으로 정규화한다.
+function normalizeOrderSymbol(symbol) {
+    return String(symbol || '')
+        .trim()
+        .replace(/\s+/g, '')
+        .toUpperCase();
+}
+
+// 체결 시각을 주문 모달의 짧은 실시간 상태 문구로 변환한다.
+function formatOrderRealtimeTime(tradeTime) {
+    const digits = String(tradeTime || '').replace(/\D/g, '');
+
+    if (digits.length < 6) {
+        return '실시간';
+    }
+
+    return `${digits.slice(0, 2)}:${digits.slice(2, 4)}:${digits.slice(4, 6)}`;
+}
+
+// 주문 모달 현재가의 실시간 연결 상태를 짧은 배지로 표시한다.
+function updateOrderRealtimeStatus(state, label) {
+    const status = document.getElementById('order-realtime-status');
+
+    if (!status) {
+        return;
+    }
+
+    status.className = `order-realtime-badge ${state}`;
+    status.textContent = label;
 }
 
 // 입력값을 검증하고 매수/매도 주문을 제출한다.
@@ -358,6 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (priceInput) {
         priceInput.addEventListener('input', () => {
+            orderState.priceFollowsCurrent = false;
             orderState.orderPrice = getOrderPrice();
             updateOrderTotalAmount();
             updateOrderPriceStepLabel();
@@ -389,6 +607,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    window.addEventListener('online', () => {
+        if (isOrderModalOpen() && orderRealtimeSymbol && !orderRealtimeSocket) {
+            openOrderRealtimeSocket();
+        }
+    });
+
+    window.addEventListener('offline', () => {
+        if (isOrderModalOpen()) {
+            updateOrderRealtimeStatus('closed', '오프라인');
+        }
+    });
+
+    window.addEventListener('beforeunload', disconnectOrderRealtimeSocket);
 });
 
 // 주문가격과 수량을 기준으로 예상 주문금액을 표시한다.
@@ -466,8 +698,10 @@ function setEditOrderQuantity(quantity) {
 
 // 주문가격을 현재가로 되돌린다.
 function setOrderPriceToCurrent() {
+    orderState.priceFollowsCurrent = true;
     setOrderPrice(orderState.currentPrice);
     updateOrderTotalAmount();
+    updateOrderPriceStepLabel();
 }
 
 // 현재 종목 가격대에 맞는 호가 단위만큼 주문가격을 내린다.
@@ -495,6 +729,7 @@ function stepOrderPrice(step) {
     const currentPrice = getOrderPrice();
     const nextPrice = Math.max(1, currentPrice + step);
 
+    orderState.priceFollowsCurrent = false;
     setOrderPrice(nextPrice);
     updateOrderTotalAmount();
     updateOrderPriceStepLabel();

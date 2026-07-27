@@ -6,7 +6,7 @@
         <a href="/main" class="brand-logo">
             <div class="brand-icon">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <polyline points="2,14 6,9 10,11 14,5 18,7" stroke="#00e5a0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <polyline points="2,14 6,9 10,11 14,5 18,7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
             </div>
             <div class="brand-name">STOCK<span>VAULT</span></div>
@@ -24,6 +24,11 @@
                 <div class="search-results" id="stock-search-results"></div>
             </div>
         </form>
+
+        <nav class="primary-nav" aria-label="주요 메뉴">
+            <a href="/main" data-primary-nav="main">관심종목</a>
+            <a href="/portfolio" data-primary-nav="portfolio">내 주식</a>
+        </nav>
 
         <div class="user-actions">
             <div class="session-control">
@@ -51,7 +56,7 @@
         <section class="my-info-modal" role="dialog" aria-modal="true" aria-labelledby="my-info-title">
             <header class="my-info-modal-header">
                 <div>
-                    <p class="my-info-kicker">// MY INFO</p>
+                    <p class="my-info-kicker">계정 관리</p>
                     <h2 id="my-info-title">내정보</h2>
                 </div>
 

@@ -2,6 +2,12 @@ spring:
   profiles:
     include: secret
 
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  jackson:
+    time-zone: Asia/Seoul
+
   datasource:
     url: jdbc:mysql://localhost:3306/mockstock
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -41,6 +47,12 @@ logging:
 
 server:
   port: 8080
+  shutdown: graceful
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
 
 # 15:30~16:00 시간외 REST 데이터 조회 주기를 밀리초 단위로 설정한다.
 kis:
@@ -49,3 +61,16 @@ kis:
 
 app:
   password-reset-url: ${PASSWORD_RESET_URL:http://localhost:8080/reset-password}
+  websocket:
+    allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS:http://localhost:8080,http://127.0.0.1:8080}
+  cleanup:
+    cron: ${OPERATIONAL_CLEANUP_CRON:0 20 3 * * *}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

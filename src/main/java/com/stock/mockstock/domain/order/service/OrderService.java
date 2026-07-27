@@ -19,6 +19,7 @@ import com.stock.mockstock.domain.stock.service.StockQuoteService;
 import com.stock.mockstock.domain.user.entity.User;
 import com.stock.mockstock.domain.user.repository.UserRepository;
 import com.stock.mockstock.global.audit.AuditLogService;
+import com.stock.mockstock.global.policy.ApplicationPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -123,6 +124,7 @@ public class OrderService {
         validateOrderRequest(request);
 
         User user = getUserForUpdate(email);
+        validateOpenOrderLimit(user);
         Stock stock = getStockBySymbol(request.getSymbol());
         MarketSession session = marketSessionService.getCurrentSession();
 
@@ -291,6 +293,14 @@ public class OrderService {
     }
 
     // 로그인 사용자를 email 기준으로 조회한다.
+    // 사용자 한 명이 지나치게 많은 미체결 주문을 쌓지 못하도록 주문 개수를 제한한다.
+    private void validateOpenOrderLimit(User user) {
+        long openOrderCount = stockOrderRepository.countByUserAndStatusIn(user, OPEN_ORDER_STATUSES);
+        if (openOrderCount >= ApplicationPolicy.MAX_OPEN_ORDER_COUNT) {
+            throw new IllegalArgumentException("미체결 주문은 최대 100개까지 등록할 수 있습니다.");
+        }
+    }
+
     private User getUser(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));

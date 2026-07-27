@@ -6,7 +6,6 @@
         <section class="order-modal" role="dialog" aria-modal="true" aria-labelledby="order-modal-title">
             <header class="order-modal-header">
                 <div>
-                    <p class="order-kicker">// ORDER</p>
                     <h2 id="order-modal-title">주문</h2>
                 </div>
 
@@ -34,8 +33,11 @@
             </div>
 
             <div class="order-info-grid">
-                <div class="order-info-card">
-                    <span class="order-label">현재가</span>
+                <div class="order-info-card order-current-price-card">
+                    <div class="order-info-label-row">
+                        <span class="order-label">현재가</span>
+                        <span class="order-realtime-badge connecting" id="order-realtime-status">연결 중</span>
+                    </div>
                     <strong id="order-current-price">-</strong>
                 </div>
                 <div class="order-info-card">
@@ -92,7 +94,6 @@
         <section class="order-modal" role="dialog" aria-modal="true" aria-labelledby="order-edit-modal-title">
             <header class="order-modal-header">
                 <div>
-                    <p class="order-kicker">// EDIT ORDER</p>
                     <h2 id="order-edit-modal-title">주문 수정</h2>
                 </div>
 

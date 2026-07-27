@@ -30,6 +30,9 @@ public interface WatchlistRepository extends JpaRepository<Watchlist, Long> {
     // 사용자가 같은 종목명을 이미 관심종목으로 등록했는지 확인한다.
     boolean existsByUserAndStockName(User user, String stockName);
 
+    // 사용자가 저장한 관심종목 개수를 조회한다.
+    long countByUser(User user);
+
     // 사용자의 관심종목에서 지정한 종목명을 삭제한다.
     void deleteByUserAndStockName(User user, String stockName);
 }

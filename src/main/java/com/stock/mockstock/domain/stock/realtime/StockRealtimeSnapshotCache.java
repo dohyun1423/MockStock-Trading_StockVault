@@ -1,18 +1,19 @@
 // 종목별 마지막 정상 체결가와 호가를 보관해 잘못된 0 데이터가 화면을 덮어쓰지 않도록 관리한다.
 package com.stock.mockstock.domain.stock.realtime;
 
+import com.stock.mockstock.global.policy.ApplicationPolicy;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class StockRealtimeSnapshotCache {
 
-    private final ConcurrentHashMap<String, KisRealtimeTradeMessage> tradesBySymbol =
-            new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, KisRealtimeOrderbookMessage> orderbooksBySymbol =
-            new ConcurrentHashMap<>();
+    private final Map<String, KisRealtimeTradeMessage> tradesBySymbol = createBoundedCache();
+    private final Map<String, KisRealtimeOrderbookMessage> orderbooksBySymbol = createBoundedCache();
 
     // 현재가가 유효한 체결가만 저장하고 일부 값이 0이면 이전 정상값으로 보완한다.
     public Optional<KisRealtimeTradeMessage> storeTrade(KisRealtimeTradeMessage tradeMessage) {
@@ -185,5 +186,16 @@ public class StockRealtimeSnapshotCache {
                 .trim()
                 .replaceAll("\\s+", "")
                 .toUpperCase();
+    }
+
+    // 가장 오래 사용하지 않은 실시간 스냅샷부터 제거하는 제한형 캐시를 생성한다.
+    private <T> Map<String, T> createBoundedCache() {
+        return Collections.synchronizedMap(new LinkedHashMap<>(16, 0.75f, true) {
+            // 전체 종목 수 이상의 비정상 키가 쌓이지 않도록 최대 항목 수를 제한한다.
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, T> eldest) {
+                return size() > ApplicationPolicy.MAX_REALTIME_SNAPSHOT_ENTRIES;
+            }
+        });
     }
 }

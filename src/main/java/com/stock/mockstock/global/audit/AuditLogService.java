@@ -3,9 +3,12 @@ package com.stock.mockstock.global.audit;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Slf4j
 @Service
@@ -32,11 +35,21 @@ public class AuditLogService {
                     .targetId(targetId)
                     .message(message)
                     .metadata(metadata)
+                    .requestId(MDC.get("requestId"))
+                    .clientIp(resolveClientIp())
                     .build();
 
             auditLogRepository.save(auditLog);
         } catch (RuntimeException e) {
             log.warn("Audit log save failed. action={}, targetType={}, targetId={}", action, targetType, targetId, e);
         }
+    }
+
+    // 현재 HTTP 요청의 실제 연결 IP를 가져오고 요청 밖의 작업이면 null을 반환한다.
+    private String resolveClientIp() {
+        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes) {
+            return attributes.getRequest().getRemoteAddr();
+        }
+        return null;
     }
 }

@@ -19,6 +19,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.Locale;
 
 @Slf4j
 @Service
@@ -135,7 +136,7 @@ public class PasswordResetService {
 
     // 이메일 조회 기준을 맞추기 위해 앞뒤 공백을 제거한다.
     private String normalizeEmail(String email) {
-        return String.valueOf(email).trim();
+        return String.valueOf(email).trim().toLowerCase(Locale.ROOT);
     }
 
     // 만료되거나 이미 사용된 토큰에 동일한 사용자 메시지를 제공한다.

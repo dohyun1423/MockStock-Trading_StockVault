@@ -36,6 +36,9 @@ public interface StockOrderRepository extends JpaRepository<StockOrder, Long> {
             Collection<StockOrderStatus> statuses
     );
 
+    // 사용자의 미체결·부분체결 주문 개수를 조회한다.
+    long countByUserAndStatusIn(User user, Collection<StockOrderStatus> statuses);
+
     // 특정 종목의 매칭 대상 주문을 접수 순서대로 조회한다.
     List<StockOrder> findAllByStockSymbolAndStatusInOrderByCreatedAtAsc(
             String symbol,

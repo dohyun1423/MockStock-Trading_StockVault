@@ -11,12 +11,33 @@ const portfolioState = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    bindPortfolioTabs();
     const isMainDashboard = document.querySelector('.dashboard-tabs');
 
     if (!isMainDashboard && document.getElementById('holding-table-wrap')) {
         loadPortfolioDashboard();
     }
 });
+
+// 내 주식 화면의 자산현황, 보유종목, 미체결 주문, 거래내역 탭을 전환한다.
+function bindPortfolioTabs() {
+    const buttons = document.querySelectorAll('[data-portfolio-tab]');
+    const panels = document.querySelectorAll('.portfolio-tab-panel');
+
+    buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const target = button.dataset.portfolioTab;
+
+            buttons.forEach((currentButton) => {
+                currentButton.classList.toggle('active', currentButton === button);
+            });
+
+            panels.forEach((panel) => {
+                panel.classList.toggle('active', panel.id === `portfolio-tab-${target}`);
+            });
+        });
+    });
+}
 
 // 내 주식 탭의 포트폴리오, 미체결 주문, 거래내역을 함께 갱신한다.
 async function loadPortfolioDashboard(force = false) {

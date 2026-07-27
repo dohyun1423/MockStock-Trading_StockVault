@@ -48,7 +48,10 @@ public class OrderNotificationWebSocketHandler extends TextWebSocketHandler {
         }
 
         String email = user.get().getEmail();
-        sessionRegistry.subscribeUser(email, session);
+        if (!sessionRegistry.subscribeUser(email, session)) {
+            session.close(CloseStatus.POLICY_VIOLATION);
+            return;
+        }
 
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(Map.of(
                 "type", "ORDER_NOTIFICATION_SUBSCRIBED"

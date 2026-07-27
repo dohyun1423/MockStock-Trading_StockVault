@@ -15,6 +15,7 @@ import lombok.*;
         indexes = {
                 @Index(name = "idx_audit_logs_created_at", columnList = "created_at"),
                 @Index(name = "idx_audit_logs_user_email", columnList = "user_email"),
+                @Index(name = "idx_audit_logs_request_id", columnList = "request_id"),
                 @Index(name = "idx_audit_logs_target", columnList = "target_type,target_id")
         }
 )
@@ -47,4 +48,12 @@ public class AuditLog extends BaseTimeEntity {
     // 복구 판단에 필요한 부가 정보를 key=value 형태로 저장한다.
     @Column(length = 1000)
     private String metadata;
+
+    // 사용자 문의와 서버 요청 로그를 연결하는 요청 추적 ID다.
+    @Column(length = 36)
+    private String requestId;
+
+    // 보안 분석을 위해 비밀번호나 토큰 없이 요청 출발 IP만 저장한다.
+    @Column(length = 64)
+    private String clientIp;
 }

@@ -32,6 +32,12 @@ spring:
 server:
   port: ${PORT:8080}
   forward-headers-strategy: framework
+  shutdown: graceful
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
 
 jwt:
   secret: ${JWT_SECRET}
@@ -47,8 +53,29 @@ kis:
 
 app:
   password-reset-url: ${PASSWORD_RESET_URL}
+  websocket:
+    allowed-origins: ${WEBSOCKET_ALLOWED_ORIGINS}
+  cleanup:
+    cron: ${OPERATIONAL_CLEANUP_CRON:0 20 3 * * *}
 
 logging:
+  file:
+    name: ${LOG_FILE:logs/mockstock.log}
+  logback:
+    rollingpolicy:
+      max-file-size: 20MB
+      max-history: 14
+      total-size-cap: 1GB
+      clean-history-on-start: false
   level:
     org.hibernate.SQL: WARN
     org.hibernate.orm.jdbc.bind: OFF
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never

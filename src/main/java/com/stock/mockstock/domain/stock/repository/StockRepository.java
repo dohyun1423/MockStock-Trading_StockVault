@@ -2,6 +2,7 @@
 package com.stock.mockstock.domain.stock.repository;
 
 import com.stock.mockstock.domain.stock.entity.Stock;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -11,7 +12,8 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
 
     List<Stock> findByNameContainingIgnoreCaseOrSymbolContainingIgnoreCase(
             String name,
-            String symbol
+            String symbol,
+            Pageable pageable
     );
 
     Optional<Stock> findFirstByNameIgnoreCase(String name);

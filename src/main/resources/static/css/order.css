@@ -152,6 +152,7 @@
     display: grid;
     grid-template-columns: 72px minmax(0, 1fr) 72px;
     gap: 8px;
+    margin-top: 9px;
 }
 
 .order-price-control input {
@@ -201,6 +202,39 @@
 .order-current-price-btn:hover {
     border-color: var(--accent);
     color: var(--accent);
+}
+
+.order-info-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.order-info-label-row .order-label {
+    margin-bottom: 0;
+}
+
+.order-realtime-badge {
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.order-realtime-badge.live {
+    color: #16a36a;
+}
+
+.order-realtime-badge.snapshot,
+.order-realtime-badge.closed {
+    color: var(--muted);
+}
+
+.order-realtime-badge.connecting,
+.order-realtime-badge.reconnecting {
+    color: #d28a00;
 }
 
 .order-quantity-field {

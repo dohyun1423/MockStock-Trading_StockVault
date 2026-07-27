@@ -19,4 +19,7 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
 
     // 같은 계정이 짧은 시간 안에 재설정 메일을 반복 요청했는지 확인한다.
     boolean existsByUserAndCreatedAtAfter(User user, LocalDateTime createdAt);
+
+    // 만료 후 보존 기간이 지난 비밀번호 재설정 토큰을 삭제한다.
+    long deleteByExpiresAtBefore(LocalDateTime cutoff);
 }

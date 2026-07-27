@@ -10,6 +10,7 @@ import com.stock.mockstock.domain.stock.realtime.StockRealtimeSessionRegistry;
 import com.stock.mockstock.domain.stock.realtime.StockRealtimeWebSocketHandler;
 import com.stock.mockstock.global.security.jwt.JwtTokenValidator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
@@ -27,6 +28,9 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final StockRealtimeBroadcaster stockRealtimeBroadcaster;
     private final MarketSessionService marketSessionService;
 
+    @Value("${app.websocket.allowed-origins:http://localhost:8080,http://127.0.0.1:8080}")
+    private String[] allowedOrigins;
+
     // 브라우저 실시간 구독 endpoint를 등록한다.
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
@@ -41,7 +45,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
                         ),
                         "/ws/stocks"
                 )
-                .setAllowedOriginPatterns("*");
+                .setAllowedOrigins(allowedOrigins);
 
         registry.addHandler(
                         new OrderNotificationWebSocketHandler(
@@ -51,6 +55,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
                         ),
                         "/ws/orders"
                 )
-                .setAllowedOriginPatterns("*");
+                .setAllowedOrigins(allowedOrigins);
     }
 }

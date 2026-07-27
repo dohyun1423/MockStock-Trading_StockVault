@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StockVault - Portfolio</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" th:href="@{/css/common.css}" href="/css/common.css">
     <link rel="stylesheet" th:href="@{/css/header.css}" href="/css/header.css">
     <link rel="stylesheet" th:href="@{/css/order.css}" href="/css/order.css">
     <link rel="stylesheet" th:href="@{/css/portfolio.css}" href="/css/portfolio.css">
+    <link rel="stylesheet" th:href="@{/css/app-light.css}" href="/css/app-light.css">
 </head>
 <body>
 
@@ -20,85 +18,101 @@
 <main class="portfolio-layout">
     <section class="portfolio-header">
         <div>
-            <h1>PORTFOLIO</h1>
+            <p>내 자산</p>
+            <h1>내 주식</h1>
         </div>
     </section>
 
-    <section class="portfolio-summary-grid">
-        <div class="summary-card">
-            <span>보유 현금</span>
-            <strong id="cash-balance">-</strong>
-        </div>
+    <nav class="portfolio-tabs" aria-label="내 주식 메뉴">
+        <button type="button" class="active" data-portfolio-tab="overview">자산현황</button>
+        <button type="button" data-portfolio-tab="holdings">보유종목</button>
+        <button type="button" data-portfolio-tab="open-orders">미체결 주문</button>
+        <button type="button" data-portfolio-tab="trades">거래내역</button>
+    </nav>
 
-        <div class="summary-card">
-            <span>주문 가능</span>
-            <strong id="available-cash">-</strong>
-        </div>
-
-        <div class="summary-card">
-            <span>예약 현금</span>
-            <strong id="reserved-cash">-</strong>
-        </div>
-
-        <div class="summary-card">
-            <span>총 자산</span>
-            <strong id="total-asset">-</strong>
-        </div>
-
-        <div class="summary-card">
-            <span>총 평가금액</span>
-            <strong id="total-evaluation">-</strong>
-        </div>
-
-        <div class="summary-card">
-            <span>총 손익</span>
-            <strong id="total-profit-loss">-</strong>
-        </div>
-
-        <div class="summary-card">
-            <span>총 수익률</span>
-            <strong id="total-profit-rate">-</strong>
-        </div>
-    </section>
-
-    <section class="holding-section">
-        <div class="section-header">
-            <h2>MY STOCKS</h2>
-        </div>
-
-        <div class="holding-table-wrap" id="holding-table-wrap">
-            <div class="portfolio-empty">
-                <p>보유 종목이 없습니다.</p>
-                <span>관심종목이나 상세 화면에서 매수를 진행해보세요.</span>
+    <div class="portfolio-tab-panel active" id="portfolio-tab-overview">
+        <section class="portfolio-summary-grid">
+            <div class="summary-card">
+                <span>보유 현금</span>
+                <strong id="cash-balance">-</strong>
             </div>
-        </div>
-    </section>
 
-    <section class="open-order-section">
-        <div class="section-header">
-            <h2>OPEN ORDERS</h2>
-        </div>
-
-        <div class="open-order-table-wrap" id="open-order-table-wrap">
-            <div class="portfolio-empty small">
-                <p>미체결 주문이 없습니다.</p>
-                <span>원하는 가격으로 주문하면 이곳에서 확인하고 취소할 수 있습니다.</span>
+            <div class="summary-card">
+                <span>주문 가능</span>
+                <strong id="available-cash">-</strong>
             </div>
-        </div>
-    </section>
 
-    <section class="trade-section">
-        <div class="section-header">
-            <h2>TRADES</h2>
-        </div>
-
-        <div class="trade-table-wrap" id="trade-table-wrap">
-            <div class="portfolio-empty">
-                <p>거래내역이 없습니다.</p>
-                <span>매수 또는 매도를 진행하면 거래내역이 표시됩니다.</span>
+            <div class="summary-card">
+                <span>예약 현금</span>
+                <strong id="reserved-cash">-</strong>
             </div>
-        </div>
-    </section>
+
+            <div class="summary-card">
+                <span>총 자산</span>
+                <strong id="total-asset">-</strong>
+            </div>
+
+            <div class="summary-card">
+                <span>총 평가금액</span>
+                <strong id="total-evaluation">-</strong>
+            </div>
+
+            <div class="summary-card">
+                <span>총 손익</span>
+                <strong id="total-profit-loss">-</strong>
+            </div>
+
+            <div class="summary-card">
+                <span>총 수익률</span>
+                <strong id="total-profit-rate">-</strong>
+            </div>
+        </section>
+    </div>
+
+    <div class="portfolio-tab-panel" id="portfolio-tab-holdings">
+        <section class="holding-section">
+            <div class="section-header">
+                <h2>보유종목</h2>
+            </div>
+
+            <div class="holding-table-wrap" id="holding-table-wrap">
+                <div class="portfolio-empty">
+                    <p>보유 종목이 없습니다.</p>
+                    <span>관심종목이나 상세 화면에서 매수를 진행해보세요.</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="portfolio-tab-panel" id="portfolio-tab-open-orders">
+        <section class="open-order-section">
+            <div class="section-header">
+                <h2>미체결 주문</h2>
+            </div>
+
+            <div class="open-order-table-wrap" id="open-order-table-wrap">
+                <div class="portfolio-empty small">
+                    <p>미체결 주문이 없습니다.</p>
+                    <span>원하는 가격으로 주문하면 이곳에서 수정하거나 취소할 수 있습니다.</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="portfolio-tab-panel" id="portfolio-tab-trades">
+        <section class="trade-section">
+            <div class="section-header">
+                <h2>거래내역</h2>
+            </div>
+
+            <div class="trade-table-wrap" id="trade-table-wrap">
+                <div class="portfolio-empty">
+                    <p>거래내역이 없습니다.</p>
+                    <span>체결된 매수·매도 내역이 표시됩니다.</span>
+                </div>
+            </div>
+        </section>
+    </div>
 </main>
 
 <div th:replace="~{fragments/order_modal :: orderModal}"></div>

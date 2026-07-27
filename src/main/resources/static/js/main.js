@@ -12,6 +12,7 @@ let mainLatestOrderbook = null;
 let mainRealtimeReconnectTimer = null;
 let mainRealtimeReconnectAttempt = 0;
 let mainRealtimeMarketName = '';
+let mainSideInfoTab = 'stock';
 let mainRealtimeStatus = {
     state: 'idle',
     label: '대기',
@@ -1312,51 +1313,81 @@ function renderStockSideInfo(stockName, stock, quote) {
 
     sidePanel.innerHTML = `
         <div class="panel-header">
-            <div>
-                <h2>${escapeHtml(stock.name)}</h2>
-            </div>
+            <h2>${escapeHtml(stock.name)}</h2>
         </div>
 
-        <div class="stock-info-grid">
-            <div class="stock-info-card">
-                <span class="info-label">현재가</span>
-                <strong>${formatNumber(price.currentPrice)}원</strong>
-            </div>
-            <div class="stock-info-card">
-                <span class="info-label">어제대비</span>
-                <strong class="${price.changePrice >= 0 ? 'up' : 'down'}">${formatSignedNumber(price.changePrice)}원</strong>
-            </div>
-            <div class="stock-info-card">
-                <span class="info-label">등락률</span>
-                <strong class="${price.changeRate >= 0 ? 'up' : 'down'}">${formatSignedNumber(price.changeRate)}%</strong>
-            </div>
-            <div class="stock-info-card">
-                <span class="info-label">거래량</span>
-                <strong>${formatNumber(price.volume)}</strong>
-            </div>
+        <div class="side-info-tabs" role="tablist" aria-label="종목 정보 구분">
+            <button type="button" data-side-info-tab="stock" class="${mainSideInfoTab === 'stock' ? 'active' : ''}">종목정보</button>
+            <button type="button" data-side-info-tab="company" class="${mainSideInfoTab === 'company' ? 'active' : ''}">기업정보</button>
         </div>
 
-        <section class="stock-info-section">
-            <h3>종목정보</h3>
-            <dl>
-                <div><dt>종목코드</dt><dd>${escapeHtml(stock.symbol)}</dd></div>
-                <div><dt>시장</dt><dd>${escapeHtml(stock.market)}</dd></div>
-                <div><dt>업종</dt><dd>${escapeHtml(stock.sector)}</dd></div>
-                <div><dt>시가총액</dt><dd>${formatNumber(stock.marketCap)}원</dd></div>
-                <div><dt>상장주식수</dt><dd>${formatNumber(stock.listedShares)}</dd></div>
-            </dl>
-        </section>
+        <div class="side-info-content ${mainSideInfoTab === 'stock' ? 'active' : ''}" data-side-info-panel="stock">
+            <div class="stock-info-grid">
+                <div class="stock-info-card">
+                    <span class="info-label">현재가</span>
+                    <strong>${formatNumber(price.currentPrice)}원</strong>
+                </div>
+                <div class="stock-info-card">
+                    <span class="info-label">어제대비</span>
+                    <strong class="${price.changePrice >= 0 ? 'up' : 'down'}">${formatSignedNumber(price.changePrice)}원</strong>
+                </div>
+                <div class="stock-info-card">
+                    <span class="info-label">등락률</span>
+                    <strong class="${price.changeRate >= 0 ? 'up' : 'down'}">${formatSignedNumber(price.changeRate)}%</strong>
+                </div>
+                <div class="stock-info-card">
+                    <span class="info-label">거래량</span>
+                    <strong>${formatNumber(price.volume)}</strong>
+                </div>
+            </div>
 
-        <section class="stock-info-section">
-            <h3>실시간 참고</h3>
-            <dl>
-                <div><dt>시가</dt><dd>${formatNumber(quote?.openPrice)}원</dd></div>
-                <div><dt>고가</dt><dd>${formatNumber(quote?.highPrice)}원</dd></div>
-                <div><dt>저가</dt><dd>${formatNumber(quote?.lowPrice)}원</dd></div>
-                <div><dt>거래대금</dt><dd>${formatNumber(quote?.tradingValue)}원</dd></div>
-            </dl>
-        </section>
+            <section class="stock-info-section">
+                <h3>실시간 참고</h3>
+                <dl>
+                    <div><dt>시가</dt><dd>${formatNumber(quote?.openPrice)}원</dd></div>
+                    <div><dt>고가</dt><dd class="up">${formatNumber(quote?.highPrice)}원</dd></div>
+                    <div><dt>저가</dt><dd class="down">${formatNumber(quote?.lowPrice)}원</dd></div>
+                    <div><dt>거래대금</dt><dd>${formatNumber(quote?.tradingValue)}원</dd></div>
+                </dl>
+            </section>
+        </div>
+
+        <div class="side-info-content ${mainSideInfoTab === 'company' ? 'active' : ''}" data-side-info-panel="company">
+            <section class="stock-info-section company">
+                <dl>
+                    <div><dt>종목코드</dt><dd>${escapeHtml(stock.symbol)}</dd></div>
+                    <div><dt>시장</dt><dd>${escapeHtml(stock.market)}</dd></div>
+                    <div><dt>업종</dt><dd>${escapeHtml(stock.sector)}</dd></div>
+                    <div><dt>시가총액</dt><dd>${formatNumber(stock.marketCap)}원</dd></div>
+                    <div><dt>상장주식수</dt><dd>${formatNumber(stock.listedShares)}</dd></div>
+                    <div><dt>PER</dt><dd>${formatNumber(stock.per)}</dd></div>
+                    <div><dt>EPS</dt><dd>${formatNumber(stock.eps)}원</dd></div>
+                    <div><dt>배당수익률</dt><dd>${formatNumber(stock.dividendYield)}%</dd></div>
+                </dl>
+            </section>
+        </div>
     `;
+
+    bindMainSideInfoTabs();
+}
+
+// 메인 오른쪽 패널의 종목정보와 기업정보를 전환한다.
+function bindMainSideInfoTabs() {
+    const buttons = document.querySelectorAll('[data-side-info-tab]');
+    const panels = document.querySelectorAll('[data-side-info-panel]');
+
+    buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+            mainSideInfoTab = button.dataset.sideInfoTab || 'stock';
+
+            buttons.forEach((currentButton) => {
+                currentButton.classList.toggle('active', currentButton === button);
+            });
+            panels.forEach((panel) => {
+                panel.classList.toggle('active', panel.dataset.sideInfoPanel === mainSideInfoTab);
+            });
+        });
+    });
 }
 
 function formatNumber(value) {

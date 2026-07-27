@@ -1,6 +1,7 @@
 // 브라우저 WebSocket session을 종목코드별로 관리하고 실시간 메시지를 전달하는 저장소
 package com.stock.mockstock.domain.stock.realtime;
 
+import com.stock.mockstock.global.policy.ApplicationPolicy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
@@ -17,17 +18,13 @@ public class StockRealtimeSessionRegistry {
     private final ConcurrentHashMap<String, Set<WebSocketSession>> sessionsByEmail = new ConcurrentHashMap<>();
 
     // 특정 종목을 구독하는 브라우저 session을 등록한다.
-    public void subscribe(String symbol, WebSocketSession session) {
-        sessionsBySymbol
-                .computeIfAbsent(symbol, key -> ConcurrentHashMap.newKeySet())
-                .add(session);
+    public boolean subscribe(String symbol, WebSocketSession session) {
+        return registerSession(sessionsBySymbol, symbol, session);
     }
 
     // 로그인 사용자의 주문 알림을 받을 브라우저 session을 등록한다.
-    public void subscribeUser(String email, WebSocketSession session) {
-        sessionsByEmail
-                .computeIfAbsent(email, key -> ConcurrentHashMap.newKeySet())
-                .add(session);
+    public boolean subscribeUser(String email, WebSocketSession session) {
+        return registerSession(sessionsByEmail, email, session);
     }
 
     // 연결이 끊긴 브라우저 session을 전체 구독 목록에서 제거한다.
@@ -103,5 +100,23 @@ public class StockRealtimeSessionRegistry {
                 log.warn("Order notification send failed. email={}, sessionId={}", email, session.getId(), e);
             }
         });
+    }
+
+    // 같은 종목 또는 사용자에 열린 브라우저 연결 수를 제한해 연결 남용을 방지한다.
+    private boolean registerSession(
+            ConcurrentHashMap<String, Set<WebSocketSession>> registry,
+            String key,
+            WebSocketSession session
+    ) {
+        Set<WebSocketSession> sessions = registry.computeIfAbsent(key, ignored -> ConcurrentHashMap.newKeySet());
+        sessions.removeIf(currentSession -> !currentSession.isOpen());
+
+        if (!sessions.contains(session)
+                && sessions.size() >= ApplicationPolicy.MAX_WEBSOCKET_SESSIONS_PER_SUBJECT) {
+            return false;
+        }
+
+        sessions.add(session);
+        return true;
     }
 }

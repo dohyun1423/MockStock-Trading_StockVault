@@ -38,7 +38,7 @@ public class WatchlistController {
     @PatchMapping("/order")
     public void updateWatchlistOrder(
             Authentication authentication,
-            @RequestBody WatchlistOrderUpdateRequest request
+            @RequestBody @Valid WatchlistOrderUpdateRequest request
     ) {
         watchlistService.updateWatchlistOrder(authentication.getName(), request);
     }

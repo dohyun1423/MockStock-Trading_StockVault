@@ -14,6 +14,7 @@ let detailLatestOrderbook = null;
 let detailChartHistories = [];
 let detailActiveChartPeriod = '1D';
 let detailRealtimeMarketName = '';
+let detailInfoTab = 'stock';
 let detailRealtimeStatus = {
     state: 'idle',
     label: '대기',
@@ -820,106 +821,72 @@ function renderDetailStockInfo(stock, quote) {
     const price = quote || stock;
 
     infoGrid.innerHTML = `
-        <section class="detail-info-section">
-            <h3>가격 정보</h3>
+        <div class="detail-info-tabs" role="tablist" aria-label="상세 정보 구분">
+            <button type="button" data-detail-info-tab="stock" class="${detailInfoTab === 'stock' ? 'active' : ''}">종목정보</button>
+            <button type="button" data-detail-info-tab="company" class="${detailInfoTab === 'company' ? 'active' : ''}">기업정보</button>
+        </div>
 
-            <div class="detail-info-cards">
-                <div class="detail-info-card">
-                    <span>현재가</span>
-                    <strong>${formatNumber(price.currentPrice)}원</strong>
+        <div class="detail-info-panel ${detailInfoTab === 'stock' ? 'active' : ''}" data-detail-info-panel="stock">
+            <section class="detail-info-section">
+                <h3>가격 정보</h3>
+                <div class="detail-info-cards">
+                    <div class="detail-info-card"><span>현재가</span><strong>${formatNumber(price.currentPrice)}원</strong></div>
+                    <div class="detail-info-card"><span>어제대비</span><strong class="${Number(price.changePrice) >= 0 ? 'up' : 'down'}">${formatSignedNumber(price.changePrice)}원</strong></div>
+                    <div class="detail-info-card"><span>등락률</span><strong class="${Number(price.changeRate) >= 0 ? 'up' : 'down'}">${formatSignedNumber(price.changeRate)}%</strong></div>
+                    <div class="detail-info-card"><span>거래량</span><strong>${formatNumber(price.volume)}</strong></div>
                 </div>
+            </section>
 
-                <div class="detail-info-card">
-                    <span>어제대비</span>
-                    <strong class="${Number(price.changePrice) >= 0 ? 'up' : 'down'}">
-                        ${formatSignedNumber(price.changePrice)}원
-                    </strong>
-                </div>
+            <section class="detail-info-section">
+                <h3>실시간 참고</h3>
+                <dl class="detail-info-list">
+                    <div><dt>시가</dt><dd>${formatNumber(quote?.openPrice)}원</dd></div>
+                    <div><dt>고가</dt><dd class="up">${formatNumber(quote?.highPrice)}원</dd></div>
+                    <div><dt>저가</dt><dd class="down">${formatNumber(quote?.lowPrice)}원</dd></div>
+                    <div><dt>기준가</dt><dd>${formatNumber(quote?.basePrice)}원</dd></div>
+                    <div><dt>거래대금</dt><dd>${formatNumber(quote?.tradingValue)}원</dd></div>
+                </dl>
+            </section>
+        </div>
 
-                <div class="detail-info-card">
-                    <span>등락률</span>
-                    <strong class="${Number(price.changeRate) >= 0 ? 'up' : 'down'}">
-                        ${formatSignedNumber(price.changeRate)}%
-                    </strong>
-                </div>
-
-                <div class="detail-info-card">
-                    <span>거래량</span>
-                    <strong>${formatNumber(price.volume)}</strong>
-                </div>
-            </div>
-        </section>
-
-        <section class="detail-info-section">
-            <h3>종목정보</h3>
-
-            <dl class="detail-info-list">
-                <div>
-                    <dt>종목명</dt>
-                    <dd>${escapeHtml(stock.name)}</dd>
-                </div>
-                <div>
-                    <dt>종목코드</dt>
-                    <dd>${escapeHtml(stock.symbol)}</dd>
-                </div>
-                <div>
-                    <dt>시장</dt>
-                    <dd>${escapeHtml(stock.market)}</dd>
-                </div>
-                <div>
-                    <dt>업종</dt>
-                    <dd>${escapeHtml(stock.sector)}</dd>
-                </div>
-                <div>
-                    <dt>시가총액</dt>
-                    <dd>${formatNumber(stock.marketCap)}원</dd>
-                </div>
-                <div>
-                    <dt>상장주식수</dt>
-                    <dd>${formatNumber(stock.listedShares)}</dd>
-                </div>
-                <div>
-                    <dt>PER</dt>
-                    <dd>${formatNumber(stock.per)}</dd>
-                </div>
-                <div>
-                    <dt>EPS</dt>
-                    <dd>${formatNumber(stock.eps)}원</dd>
-                </div>
-                <div>
-                    <dt>배당수익률</dt>
-                    <dd>${formatNumber(stock.dividendYield)}%</dd>
-                </div>
-            </dl>
-        </section>
-
-        <section class="detail-info-section">
-            <h3>실시간 참고</h3>
-
-            <dl class="detail-info-list">
-                <div>
-                    <dt>시가</dt>
-                    <dd>${formatNumber(quote?.openPrice)}원</dd>
-                </div>
-                <div>
-                    <dt>고가</dt>
-                    <dd>${formatNumber(quote?.highPrice)}원</dd>
-                </div>
-                <div>
-                    <dt>저가</dt>
-                    <dd>${formatNumber(quote?.lowPrice)}원</dd>
-                </div>
-                <div>
-                    <dt>기준가</dt>
-                    <dd>${formatNumber(quote?.basePrice)}원</dd>
-                </div>
-                <div>
-                    <dt>거래대금</dt>
-                    <dd>${formatNumber(quote?.tradingValue)}원</dd>
-                </div>
-            </dl>
-        </section>
+        <div class="detail-info-panel ${detailInfoTab === 'company' ? 'active' : ''}" data-detail-info-panel="company">
+            <section class="detail-info-section">
+                <h3>기업정보</h3>
+                <dl class="detail-info-list">
+                    <div><dt>종목명</dt><dd>${escapeHtml(stock.name)}</dd></div>
+                    <div><dt>종목코드</dt><dd>${escapeHtml(stock.symbol)}</dd></div>
+                    <div><dt>시장</dt><dd>${escapeHtml(stock.market)}</dd></div>
+                    <div><dt>업종</dt><dd>${escapeHtml(stock.sector)}</dd></div>
+                    <div><dt>시가총액</dt><dd>${formatNumber(stock.marketCap)}원</dd></div>
+                    <div><dt>상장주식수</dt><dd>${formatNumber(stock.listedShares)}</dd></div>
+                    <div><dt>PER</dt><dd>${formatNumber(stock.per)}</dd></div>
+                    <div><dt>EPS</dt><dd>${formatNumber(stock.eps)}원</dd></div>
+                    <div><dt>배당수익률</dt><dd>${formatNumber(stock.dividendYield)}%</dd></div>
+                </dl>
+            </section>
+        </div>
     `;
+
+    bindDetailInfoTabs();
+}
+
+// 상세페이지 종목정보 영역의 종목정보와 기업정보를 전환한다.
+function bindDetailInfoTabs() {
+    const buttons = document.querySelectorAll('[data-detail-info-tab]');
+    const panels = document.querySelectorAll('[data-detail-info-panel]');
+
+    buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+            detailInfoTab = button.dataset.detailInfoTab || 'stock';
+
+            buttons.forEach((currentButton) => {
+                currentButton.classList.toggle('active', currentButton === button);
+            });
+            panels.forEach((panel) => {
+                panel.classList.toggle('active', panel.dataset.detailInfoPanel === detailInfoTab);
+            });
+        });
+    });
 }
 
 // 상세 화면 탭 전환 처리

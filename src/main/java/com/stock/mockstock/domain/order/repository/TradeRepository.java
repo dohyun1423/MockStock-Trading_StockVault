@@ -9,7 +9,7 @@ import java.util.List;
 
 public interface TradeRepository extends JpaRepository<Trade, Long> {
 
-    List<Trade> findAllByUserOrderByCreatedAtDesc(User user);
+    List<Trade> findTop100ByUserOrderByCreatedAtDesc(User user);
 
-    List<Trade> findAllByUserAndStockSymbolOrderByCreatedAtDesc(User user, String symbol);
+    List<Trade> findTop100ByUserAndStockSymbolOrderByCreatedAtDesc(User user, String symbol);
 }

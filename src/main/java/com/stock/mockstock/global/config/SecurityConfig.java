@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import com.stock.mockstock.global.security.jwt.JwtAuthenticationFilter;
+import com.stock.mockstock.global.security.SecurityErrorResponseWriter;
 import jakarta.servlet.http.HttpServletResponse;
 
 @RequiredArgsConstructor
@@ -19,6 +20,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final SecurityErrorResponseWriter securityErrorResponseWriter;
 
     @Bean
     // 비밀번호 암호화를 위한 BCryptPasswordEncoder 등록
@@ -44,6 +46,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/",
                                 "/error",
+                                "/actuator/health",
                                 "/api/users/signup",
                                 "/api/users/login",
                                 "/api/users/password-reset/request",
@@ -66,11 +69,19 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception
                         // 인증 자체가 없거나 만료된 경우에는 프론트가 명확히 재로그인 처리할 수 있도록 401을 반환한다.
                         .authenticationEntryPoint((request, response, authException) ->
-                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED)
+                                securityErrorResponseWriter.write(
+                                        response,
+                                        HttpServletResponse.SC_UNAUTHORIZED,
+                                        "로그인이 필요하거나 인증 시간이 만료되었습니다."
+                                )
                         )
                         // 인증은 되었지만 접근할 수 없는 요청은 토큰 삭제 대상이 아니므로 403으로만 반환한다.
                         .accessDeniedHandler((request, response, accessDeniedException) ->
-                                response.sendError(HttpServletResponse.SC_FORBIDDEN)
+                                securityErrorResponseWriter.write(
+                                        response,
+                                        HttpServletResponse.SC_FORBIDDEN,
+                                        "해당 요청을 수행할 권한이 없습니다."
+                                )
                         )
                 )
 
