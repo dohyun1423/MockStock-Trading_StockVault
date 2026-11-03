@@ -22,9 +22,12 @@ function bindPrimaryNavigation() {
 
     document.querySelectorAll('[data-primary-nav]').forEach((link) => {
         const target = link.dataset.primaryNav;
-        const active = target === 'portfolio'
-                ? currentPath === '/portfolio'
-                : currentPath === '/main' || currentPath === '/stocks/detail';
+        const activePaths = {
+            main: ['/main', '/stocks/detail'],
+            portfolio: ['/portfolio'],
+            explore: ['/explore']
+        };
+        const active = (activePaths[target] || []).includes(currentPath);
 
         link.classList.toggle('active', active);
         if (active) {

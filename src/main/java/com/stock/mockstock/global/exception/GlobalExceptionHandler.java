@@ -18,6 +18,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.UUID;
 
@@ -88,6 +89,12 @@ public class GlobalExceptionHandler {
                 "요청 정보를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.",
                 errorId
         );
+    }
+
+    // 존재하지 않는 정적 리소스는 서버 오류가 아니라 404로 응답한다.
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(NoResourceFoundException e) {
+        return buildResponse(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다.", resolveErrorId());
     }
 
     // 예상하지 못한 서버 오류의 상세 내용은 로그에만 남기고 일반화된 500 응답을 반환한다.

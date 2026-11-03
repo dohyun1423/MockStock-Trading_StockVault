@@ -58,6 +58,7 @@ public class SecurityConfig {
                                 "/main",
                                 "/stocks/detail",
                                 "/portfolio",
+                                "/explore",
                                 "/ws/stocks",
                                 "/ws/stocks/**",
                                 "/ws/orders",

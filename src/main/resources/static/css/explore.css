@@ -1,0 +1,52 @@
+.explore-layout { max-width: 1000px; margin: 0 auto; padding: 44px 28px 64px; }
+.explore-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.explore-eyebrow { margin: 0 0 10px; font-size: 13px; color: var(--brand); font-weight: 700; }
+.explore-heading h1 { margin: 0; font-size: 30px; letter-spacing: -1px; }
+.explore-description { margin: 12px 0 0; font-size: 14px; color: var(--muted); }
+.explore-badge { padding: 9px 13px; border-radius: 8px; background: var(--brand-dim); color: #16835b; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.explore-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.explore-card-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 24px 26px; border-bottom: 1px solid var(--border); }
+.explore-card-heading h2 { margin: 0 0 8px; font-size: 18px; }
+.explore-card-heading p, .ranking-updated { margin: 0; color: var(--muted); font-size: 12px; }
+.ranking-message { margin: 0; padding: 18px 26px; color: var(--muted); font-size: 13px; line-height: 1.6; background: #f8fafc; }
+.ranking-message:empty { display: none; }
+.ranking-message.error { color: #a34d22; background: #fff8ed; }
+.volume-ranking { list-style: none; margin: 0; padding: 0 26px; }
+.ranking-row { position: relative; display: flex; align-items: center; gap: 12px; padding: 18px 0; border-bottom: 1px solid #edf0f5; }
+.ranking-row:last-child { border-bottom: 0; }
+.ranking-link { display: flex; flex: 1; min-width: 0; align-items: center; gap: 20px; color: inherit; text-decoration: none; border-radius: 6px; }
+.ranking-link::after { content: ""; position: absolute; inset: 0; }
+.ranking-row:hover { background: #f8fafc; }
+.ranking-row:hover .ranking-name { color: var(--accent); }
+.ranking-position { width: 30px; text-align: center; flex-shrink: 0; color: var(--muted); font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
+.ranking-row:nth-child(-n+3) .ranking-position { color: var(--accent); }
+.ranking-info { flex: 1; min-width: 0; }
+.ranking-identity, .ranking-values { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 4px; }
+.ranking-name { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+.ranking-symbol { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ranking-values { margin-top: 7px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.ranking-price { font-weight: 600; }
+.ranking-change.up { color: var(--red); }
+.ranking-change.down { color: var(--blue); }
+.ranking-volume { flex-shrink: 0; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ranking-heart { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 38px; height: 38px; padding: 0; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--muted); cursor: pointer; }
+.ranking-heart svg { width: 22px; height: 22px; }
+.ranking-heart:hover { background: #fff1f3; color: var(--red); }
+.ranking-heart.active { color: var(--red); border-color: rgba(255,69,96,0.45); background: rgba(255,69,96,0.08); }
+.ranking-heart.active svg { fill: currentColor; }
+.ranking-heart:disabled { opacity: .45; cursor: default; }
+.explore-footnote { margin: 0; padding: 20px 26px; background: #f8fafc; color: var(--muted); font-size: 12px; line-height: 1.7; border-top: 1px solid var(--border); }
+@media (max-width: 600px) {
+    .explore-layout { padding: 28px 14px 40px; }
+    .explore-heading { align-items: flex-start; }
+    .explore-heading h1 { font-size: 26px; }
+    .explore-description { font-size: 12px; }
+    .explore-badge { padding: 8px; font-size: 10px; }
+    .explore-card-heading, .ranking-message, .explore-footnote { padding-right: 16px; padding-left: 16px; }
+    .volume-ranking { padding: 0 12px; }
+    .ranking-link { gap: 10px; }
+    .ranking-row { gap: 4px; }
+    .ranking-position { width: 24px; font-size: 15px; }
+    .ranking-volume { display: none; }
+    .ranking-heart { width: 40px; height: 40px; }
+}

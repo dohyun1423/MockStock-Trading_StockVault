@@ -52,6 +52,11 @@ public class ViewController {
         return "stock_detail";
     }
 
+    @GetMapping("/explore")
+    public String explorePage() {
+        return "explore";
+    }
+
     // 개인 포트폴리오 화면 이동
     @GetMapping("/portfolio")
     public String portfolioPage() {

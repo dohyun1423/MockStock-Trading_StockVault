@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockVault - 탐색</title>
+    <link rel="stylesheet" th:href="@{/css/common.css}" href="/css/common.css">
+    <link rel="stylesheet" th:href="@{/css/header.css}" href="/css/header.css">
+    <link rel="stylesheet" th:href="@{/css/order.css}" href="/css/order.css">
+    <link rel="stylesheet" th:href="@{/css/app-light.css}" href="/css/app-light.css">
+    <link rel="stylesheet" th:href="@{/css/explore.css}" href="/css/explore.css">
+</head>
+<body>
+<div th:replace="~{fragments/header :: header}"></div>
+<main class="explore-layout">
+    <header class="explore-heading">
+        <div>
+            <p class="explore-eyebrow">시장의 흐름을 한눈에</p>
+            <h1>탐색</h1>
+            <p class="explore-description">오늘 거래가 활발한 종목을 살펴보세요.</p>
+        </div>
+        <span class="explore-badge">거래량 TOP 30</span>
+    </header>
+    <section class="explore-card" aria-labelledby="ranking-title">
+        <div class="explore-card-heading">
+            <div>
+                <h2 id="ranking-title">거래량 순위</h2>
+                <p>KRX 전체 · 당일 누적 거래량 기준 · 1분마다 갱신</p>
+            </div>
+            <span id="ranking-updated" class="ranking-updated"></span>
+        </div>
+        <p id="ranking-message" class="ranking-message" role="status" aria-live="polite">순위를 불러오는 중입니다.</p>
+        <ol id="volume-ranking" class="volume-ranking" aria-label="거래량 상위 30개 종목" aria-busy="true"></ol>
+        <p class="explore-footnote">가격과 등락률은 순위 조회 시점 기준입니다. 장이 닫힌 시간에는 마지막 거래일 데이터가 표시될 수 있습니다.</p>
+    </section>
+</main>
+<script th:src="@{/js/header.js}" src="/js/header.js"></script>
+<script th:src="@{/js/explore.js}" src="/js/explore.js"></script>
+</body>
+</html>

@@ -1240,6 +1240,13 @@ async function fetchStockDetail(keyword) {
     const normalizedKeyword = String(keyword || '').trim();
     const isSymbol = /^[0-9A-Z]+$/.test(normalizedKeyword);
 
+    // 새 탭 열기/직접 링크로 진입해도 탐색의 미등록 종목을 먼저 준비한다.
+    const fromExplore = new URLSearchParams(window.location.search).get('source') === 'explore';
+    if (fromExplore && isSymbol) {
+        const resolved = await authFetch(`/api/stocks/rankings/volume/${encodeURIComponent(normalizedKeyword)}/resolve`, { method: 'POST' });
+        return resolved && resolved.ok ? await resolved.json() : null;
+    }
+
     const url = isSymbol
         ? `/api/stocks/symbol/${encodeURIComponent(normalizedKeyword)}`
         : `/api/stocks/detail?name=${encodeURIComponent(normalizedKeyword)}`;
